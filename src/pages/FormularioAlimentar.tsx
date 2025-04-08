@@ -161,7 +161,7 @@ const FormularioAlimentar = () => {
       // Save to Supabase
       const { error } = await supabase
         .from('formulario_alimentar')
-        .insert([formData]);
+        .insert(formData);
 
       if (error) {
         throw error;

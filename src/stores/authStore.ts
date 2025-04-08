@@ -1,10 +1,9 @@
 
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import { supabase } from "@/integrations/supabase/client";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
 
-// Tipagem para o usuário
-interface User {
+export interface User {
   id: string;
   phone: string;
   name?: string;
@@ -13,63 +12,44 @@ interface User {
   plano_status?: string;
 }
 
-// Tipagem para o estado de autenticação
 interface AuthState {
+  token: string | null;
   user: User | null;
   isAuthenticated: boolean;
-  authToken: string | null;
-  formCompleted: boolean;
-  login: (phone: string, token: string, user: User) => void;
-  logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
-  setFormCompleted: (completed: boolean) => void;
+  login: (phone: string, token: string, userData: User) => void;
+  logout: () => Promise<void>;
+  updateUser: (data: Partial<User>) => void;
 }
 
-// Criação da store com persistência
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
+      token: null,
       user: null,
       isAuthenticated: false,
-      authToken: null,
-      formCompleted: false,
-
-      login: (phone, token, user) => set({ 
-        isAuthenticated: true, 
-        authToken: token,
-        user: {
-          ...user,
-          phone
-        }
+      login: (phone, token, userData) => set({
+        token,
+        user: userData,
+        isAuthenticated: true,
       }),
-
       logout: async () => {
-        // Sign out from Supabase
         await supabase.auth.signOut();
-        
-        // Clear local state
-        set({ 
-          isAuthenticated: false, 
-          authToken: null, 
+        set({
+          token: null,
           user: null,
-          formCompleted: false
+          isAuthenticated: false,
         });
       },
-
-      updateUser: (userData) => set((state) => ({
-        user: state.user ? { ...state.user, ...userData } : null
+      updateUser: (data) => set((state) => ({
+        user: state.user ? { ...state.user, ...data } : null,
       })),
-
-      setFormCompleted: (completed) => set({ formCompleted: completed })
     }),
     {
-      name: "meu-plano-auth",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ 
+      name: 'auth-storage',
+      partialize: (state) => ({
+        token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        authToken: state.authToken,
-        formCompleted: state.formCompleted
       }),
     }
   )
