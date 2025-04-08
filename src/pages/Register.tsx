@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
 import { UserPlus, Smartphone, Lock } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 const registerSchema = z.object({
   phone: z.string()
@@ -45,22 +46,39 @@ const Register = () => {
   const onSubmit = async (values: RegisterFormValues) => {
     try {
       setIsLoading(true);
-      // Simulando uma chamada de API para registro
-      // Em uma implementação real, você faria uma requisição para seu backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Simulação de sucesso - Em produção, você usaria dados reais da API
-      const mockUser = {
-        id: "user123",
-        phone: values.phone,
-      };
-      const mockToken = "jwt-token-example-123";
-
-      login(values.phone, mockToken, mockUser);
-      toast.success("Conta criada com sucesso!");
-      navigate("/anamnese");
-    } catch (error) {
-      toast.error("Erro ao criar conta. Tente novamente.");
+      
+      // Sign up with Supabase using email+password
+      // We format the phone as an email to work with Supabase auth
+      const email = `${values.phone}@meuplanosaude.app`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: values.password,
+        options: {
+          data: {
+            phone: values.phone,
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
+        // Create a user object from Supabase auth response
+        const user = {
+          id: data.user.id,
+          phone: values.phone,
+        };
+        
+        // Store auth data in the auth store
+        login(values.phone, data.session ? data.session.access_token : "", user);
+        toast.success("Conta criada com sucesso!");
+        navigate("/anamnese");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao criar conta. Tente novamente.");
       console.error("Erro no registro:", error);
     } finally {
       setIsLoading(false);

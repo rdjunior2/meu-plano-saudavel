@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
 import { Smartphone, Lock } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 const loginSchema = z.object({
   phone: z.string()
@@ -39,23 +40,35 @@ const Login = () => {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       setIsLoading(true);
-      // Simulando uma chamada de API para login
-      // Em uma implementação real, você faria uma requisição para seu backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Simulação de sucesso - Em produção, você usaria dados reais da API
-      const mockUser = {
-        id: "user123",
-        phone: values.phone,
-        name: "Usuário Teste"
-      };
-      const mockToken = "jwt-token-example-123";
-
-      login(values.phone, mockToken, mockUser);
-      toast.success("Login realizado com sucesso!");
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error("Erro ao realizar login. Verifique seus dados.");
+      
+      // Sign in with Supabase using email+password
+      // We format the phone as an email to work with Supabase auth
+      const email = `${values.phone}@meuplanosaude.app`;
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: values.password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
+        // Create a user object from Supabase auth response
+        const user = {
+          id: data.user.id,
+          phone: values.phone,
+          name: data.user.user_metadata.name || "",
+        };
+        
+        // Store auth data in the auth store
+        login(values.phone, data.session.access_token, user);
+        toast.success("Login realizado com sucesso!");
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao realizar login. Verifique seus dados.");
       console.error("Erro no login:", error);
     } finally {
       setIsLoading(false);

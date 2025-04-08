@@ -9,7 +9,256 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      anamnesis_forms: {
+        Row: {
+          alergias: string[] | null
+          alimentos_indesejados: string[] | null
+          altura: number
+          atividade_fisica: string | null
+          created_at: string
+          dias_treino: number | null
+          doencas: string[] | null
+          genero: string
+          horario_acordar: string | null
+          horario_dormir: string | null
+          id: string
+          idade: number
+          local_treino: string | null
+          medicamentos: string[] | null
+          nivel_atividade: string | null
+          objetivo: string
+          observacoes: string | null
+          peso: number
+          preferencias_alimentares: string[] | null
+          refeicoes_dia: number | null
+          restricoes: string[] | null
+          rotina: string | null
+          tempo_disponivel: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alergias?: string[] | null
+          alimentos_indesejados?: string[] | null
+          altura: number
+          atividade_fisica?: string | null
+          created_at?: string
+          dias_treino?: number | null
+          doencas?: string[] | null
+          genero: string
+          horario_acordar?: string | null
+          horario_dormir?: string | null
+          id?: string
+          idade: number
+          local_treino?: string | null
+          medicamentos?: string[] | null
+          nivel_atividade?: string | null
+          objetivo: string
+          observacoes?: string | null
+          peso: number
+          preferencias_alimentares?: string[] | null
+          refeicoes_dia?: number | null
+          restricoes?: string[] | null
+          rotina?: string | null
+          tempo_disponivel?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alergias?: string[] | null
+          alimentos_indesejados?: string[] | null
+          altura?: number
+          atividade_fisica?: string | null
+          created_at?: string
+          dias_treino?: number | null
+          doencas?: string[] | null
+          genero?: string
+          horario_acordar?: string | null
+          horario_dormir?: string | null
+          id?: string
+          idade?: number
+          local_treino?: string | null
+          medicamentos?: string[] | null
+          nivel_atividade?: string | null
+          objetivo?: string
+          observacoes?: string | null
+          peso?: number
+          preferencias_alimentares?: string[] | null
+          refeicoes_dia?: number | null
+          restricoes?: string[] | null
+          rotina?: string | null
+          tempo_disponivel?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anamnesis_forms_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          meals: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          meals: Json
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          meals?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          form_completed: boolean | null
+          id: string
+          name: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_completed?: boolean | null
+          id: string
+          name?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_completed?: boolean | null
+          id?: string
+          name?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_plans: {
+        Row: {
+          created_at: string
+          id: string
+          meal_plan_id: string | null
+          pdf_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          workout_plan_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_plan_id?: string | null
+          pdf_url?: string | null
+          status: string
+          updated_at?: string
+          user_id: string
+          workout_plan_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_plan_id?: string | null
+          pdf_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          workout_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plans_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plans_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_plans: {
+        Row: {
+          created_at: string
+          days: Json
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days: Json
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days?: Json
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

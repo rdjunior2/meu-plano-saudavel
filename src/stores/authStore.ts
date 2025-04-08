@@ -1,6 +1,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { supabase } from "@/integrations/supabase/client";
 
 // Tipagem para o usuário
 interface User {
@@ -39,12 +40,18 @@ export const useAuthStore = create<AuthState>()(
         }
       }),
 
-      logout: () => set({ 
-        isAuthenticated: false, 
-        authToken: null, 
-        user: null,
-        formCompleted: false
-      }),
+      logout: async () => {
+        // Sign out from Supabase
+        await supabase.auth.signOut();
+        
+        // Clear local state
+        set({ 
+          isAuthenticated: false, 
+          authToken: null, 
+          user: null,
+          formCompleted: false
+        });
+      },
 
       updateUser: (userData) => set((state) => ({
         user: state.user ? { ...state.user, ...userData } : null
