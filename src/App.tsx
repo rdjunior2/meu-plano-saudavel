@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +11,7 @@ import Footer from "./components/Footer";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import CriarSenha from "./pages/CriarSenha";
 import Dashboard from "./pages/Dashboard";
 import Anamnese from "./pages/Anamnese";
 import PlanoDetalhes from "./pages/PlanoDetalhes";
@@ -43,32 +43,38 @@ const App = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Create user object
         const userData = {
           id: session.user.id,
-          phone: session.user.user_metadata.phone || "",
-          name: session.user.user_metadata.name || "",
+          nome: session.user.user_metadata.name || "",
+          telefone: session.user.user_metadata.phone || "",
+          status: "senha_criada" // Status padrão
         };
-        login(userData.phone, session.access_token, userData);
+        
+        // Login
+        login(userData, session.access_token);
         
         try {
-          // Fetch profile data
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
-            .eq('id', session.user.id)
+          // Verificar se formulários estão preenchidos
+          const { data: formAlimentar } = await supabase
+            .from('formularios_alimentacao')
+            .select('id')
+            .eq('id_usuario', session.user.id)
             .single();
             
-          if (error) {
-            console.error('Error fetching profile:', error);
-          } else if (profileData) {
-            updateUser({
-              formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
-              formulario_treino_preenchido: profileData.formulario_treino_preenchido,
-              plano_status: profileData.plano_status
-            });
-          }
+          const { data: formTreino } = await supabase
+            .from('formularios_treino')
+            .select('id')
+            .eq('id_usuario', session.user.id)
+            .single();
+          
+          // Atualizar status do usuário no store
+          updateUser({
+            formulario_alimentar_preenchido: !!formAlimentar,
+            formulario_treino_preenchido: !!formTreino
+          });
         } catch (error) {
-          console.error('Error during profile fetch:', error);
+          console.error('Erro ao verificar formulários:', error);
         }
       }
     };
@@ -79,32 +85,38 @@ const App = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
+          // Create user object
           const userData = {
             id: session.user.id,
-            phone: session.user.user_metadata.phone || "",
-            name: session.user.user_metadata.name || "",
+            nome: session.user.user_metadata.name || "",
+            telefone: session.user.user_metadata.phone || "",
+            status: "senha_criada" // Status padrão
           };
-          login(userData.phone, session.access_token, userData);
+          
+          // Login
+          login(userData, session.access_token);
           
           try {
-            // Fetch profile data
-            const { data: profileData, error } = await supabase
-              .from('profiles')
-              .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
-              .eq('id', session.user.id)
+            // Verificar se formulários estão preenchidos
+            const { data: formAlimentar } = await supabase
+              .from('formularios_alimentacao')
+              .select('id')
+              .eq('id_usuario', session.user.id)
               .single();
               
-            if (error) {
-              console.error('Error fetching profile:', error);
-            } else if (profileData) {
-              updateUser({
-                formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
-                formulario_treino_preenchido: profileData.formulario_treino_preenchido,
-                plano_status: profileData.plano_status
-              });
-            }
+            const { data: formTreino } = await supabase
+              .from('formularios_treino')
+              .select('id')
+              .eq('id_usuario', session.user.id)
+              .single();
+            
+            // Atualizar status do usuário no store
+            updateUser({
+              formulario_alimentar_preenchido: !!formAlimentar,
+              formulario_treino_preenchido: !!formTreino
+            });
           } catch (error) {
-            console.error('Error during profile fetch:', error);
+            console.error('Erro ao verificar formulários:', error);
           }
         } else if (event === 'SIGNED_OUT') {
           logout();
@@ -125,25 +137,23 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Navbar />
-          <main className="min-h-[calc(100vh-8rem)] bg-background">
+          <div className="flex-1">
             <Routes>
-              {/* Rotas públicas */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              {/* Rotas protegidas */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
+              <Route path="/criar-senha" element={<CriarSenha />} />
               <Route path="/anamnese" element={
                 <ProtectedRoute>
                   <Anamnese />
                 </ProtectedRoute>
               } />
-              <Route path="/planos" element={
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/plano/:id" element={
                 <ProtectedRoute>
                   <PlanoDetalhes />
                 </ProtectedRoute>
@@ -158,11 +168,9 @@ const App = () => {
                   <FormularioTreino />
                 </ProtectedRoute>
               } />
-              
-              {/* Rota 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </main>
+          </div>
           <Footer />
         </BrowserRouter>
       </TooltipProvider>

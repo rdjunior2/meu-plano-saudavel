@@ -71,3 +71,15 @@ Yes it is!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Como fazer backup do projeto
+
+Para realizar um backup completo do projeto, basta executar o seguinte comando:
+
+```sh
+npm run backup
+```
+
+Este comando criará um arquivo zip contendo todos os arquivos do projeto (exceto os diretórios node_modules e .git) no diretório `../backups`. O nome do arquivo seguirá o formato `projeto_backup_AAAAMMDD_HHMMSS.zip`, onde AAAA é o ano, MM é o mês, DD é o dia, HH é a hora, MM é o minuto e SS é o segundo da criação do backup.
+
+O backup é uma boa prática para preservar o estado atual do projeto e pode ser usado para restaurar o projeto em caso de problemas.

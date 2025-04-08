@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "backup": "node -e \"const fs=require('fs');const path=require('path');const backupDir=path.join(__dirname,'..','backups');if(!fs.existsSync(backupDir)){fs.mkdirSync(backupDir,{recursive:true})};const cp=require('child_process');const date=new Date();const timestamp=`${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;const backupPath=path.join(backupDir,`projeto_backup_${timestamp}.zip`);console.log(`Criando backup em: ${backupPath}`);cp.execSync(`tar -cf ${backupPath} --exclude=node_modules --exclude=.git .`,{stdio:'inherit'});console.log('Backup concluído com sucesso!');\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -41,6 +42,8 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/supabase-js": "^2.49.4",
     "@tanstack/react-query": "^5.56.2",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -70,6 +73,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "archiver": "^7.0.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

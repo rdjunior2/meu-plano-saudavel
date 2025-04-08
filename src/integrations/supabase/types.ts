@@ -397,12 +397,174 @@ export type Database = {
           },
         ]
       }
+      usuarios: {
+        Row: {
+          id: string
+          nome: string
+          telefone: string
+          email: string | null
+          senha_hash: string | null
+          status: string
+          data_criacao: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          telefone: string
+          email?: string | null
+          senha_hash?: string | null
+          status?: string
+          data_criacao?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          telefone?: string
+          email?: string | null
+          senha_hash?: string | null
+          status?: string
+          data_criacao?: string
+        }
+        Relationships: []
+      }
+      formularios_alimentacao: {
+        Row: {
+          id: string
+          id_usuario: string
+          idade: number
+          altura: number
+          peso: number
+          sexo: string
+          objetivo: string
+          restricao: string | null
+          preferencias: string | null
+          data_criacao: string
+        }
+        Insert: {
+          id?: string
+          id_usuario: string
+          idade: number
+          altura: number
+          peso: number
+          sexo: string
+          objetivo: string
+          restricao?: string | null
+          preferencias?: string | null
+          data_criacao?: string
+        }
+        Update: {
+          id?: string
+          id_usuario?: string
+          idade?: number
+          altura?: number
+          peso?: number
+          sexo?: string
+          objetivo?: string
+          restricao?: string | null
+          preferencias?: string | null
+          data_criacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formularios_alimentacao_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      formularios_treino: {
+        Row: {
+          id: string
+          id_usuario: string
+          ja_treina: boolean
+          frequencia: number | null
+          equipamentos: string | null
+          foco: string | null
+          limitacoes: string | null
+          data_criacao: string
+        }
+        Insert: {
+          id?: string
+          id_usuario: string
+          ja_treina: boolean
+          frequencia?: number | null
+          equipamentos?: string | null
+          foco?: string | null
+          limitacoes?: string | null
+          data_criacao?: string
+        }
+        Update: {
+          id?: string
+          id_usuario?: string
+          ja_treina?: boolean
+          frequencia?: number | null
+          equipamentos?: string | null
+          foco?: string | null
+          limitacoes?: string | null
+          data_criacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formularios_treino_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      planos: {
+        Row: {
+          id: string
+          id_usuario: string
+          plano_alimentar: Json | null
+          plano_treino: Json | null
+          data_geracao: string
+        }
+        Insert: {
+          id?: string
+          id_usuario: string
+          plano_alimentar?: Json | null
+          plano_treino?: Json | null
+          data_geracao?: string
+        }
+        Update: {
+          id?: string
+          id_usuario?: string
+          plano_alimentar?: Json | null
+          plano_treino?: Json | null
+          data_geracao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verificar_senha: {
+        Args: {
+          telefone_param: string
+          senha_param: string
+        }
+        Returns: {
+          id: string
+          nome: string
+          telefone: string
+          status: string
+          senha_valida: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

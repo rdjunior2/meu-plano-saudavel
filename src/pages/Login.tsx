@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,7 +10,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
 import { Smartphone, Lock } from 'lucide-react';
-import { supabase } from "@/integrations/supabase/client";
 
 const loginSchema = z.object({
   phone: z.string()
@@ -26,7 +24,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { loginWithPassword, checkUserByPhone } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<LoginFormValues>({
@@ -41,34 +39,41 @@ const Login = () => {
     try {
       setIsLoading(true);
       
-      // Sign in with Supabase using email+password
-      // We format the phone as an email to work with Supabase auth
-      const email = `${values.phone}@meuplanosaude.app`;
+      // Primeiro, verificar se o usuário existe
+      const { exists, status } = await checkUserByPhone(values.phone);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: values.password,
-      });
-      
-      if (error) {
-        throw error;
+      if (!exists) {
+        toast.error("Número de telefone não registrado. Verifique os dados.");
+        return;
       }
       
-      if (data.user) {
-        // Create a user object from Supabase auth response
-        const user = {
-          id: data.user.id,
-          phone: values.phone,
-          name: data.user.user_metadata.name || "",
-        };
-        
-        // Store auth data in the auth store
-        login(values.phone, data.session.access_token, user);
-        toast.success("Login realizado com sucesso!");
+      if (status === 'aguardando_formulario') {
+        // Redirecionar para criação de senha
+        navigate(`/criar-senha?phone=${values.phone}`);
+        return;
+      }
+      
+      // Tentar fazer login
+      const { success, error } = await loginWithPassword(values.phone, values.password);
+      
+      if (!success) {
+        toast.error(error || "Erro ao realizar login. Verifique seus dados.");
+        return;
+      }
+      
+      toast.success("Login realizado com sucesso!");
+      
+      // Verificar status e redirecionar conforme necessário
+      if (status === 'senha_criada') {
+        navigate("/formulario-alimentar");
+      } else if (status === 'formulario_preenchido') {
+        navigate("/dashboard");
+      } else {
         navigate("/dashboard");
       }
+      
     } catch (error: any) {
-      toast.error(error.message || "Erro ao realizar login. Verifique seus dados.");
+      toast.error("Erro ao realizar login. Tente novamente.");
       console.error("Erro no login:", error);
     } finally {
       setIsLoading(false);
