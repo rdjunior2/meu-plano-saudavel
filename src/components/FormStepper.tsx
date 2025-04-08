@@ -15,13 +15,14 @@ const FormStepper: React.FC<FormStepperProps> = ({ steps, currentStep }) => {
           <React.Fragment key={index}>
             <div className="flex flex-col items-center">
               <div
-                className={`progress-step ${
-                  index < currentStep
-                    ? 'progress-step-completed'
-                    : index === currentStep
-                    ? 'progress-step-active'
-                    : 'progress-step-inactive'
-                }`}
+                className={`flex items-center justify-center h-8 w-8 rounded-full border text-sm font-medium
+                  ${
+                    index < currentStep
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : index === currentStep
+                      ? 'border-primary bg-background text-primary'
+                      : 'border-muted bg-muted/20 text-muted-foreground'
+                  }`}
               >
                 {index < currentStep ? (
                   <Check className="h-4 w-4" />
@@ -34,9 +35,10 @@ const FormStepper: React.FC<FormStepperProps> = ({ steps, currentStep }) => {
             
             {index < steps.length - 1 && (
               <div
-                className={`progress-line ${
-                  index < currentStep ? 'progress-line-active' : ''
-                }`}
+                className={`h-[1px] w-full max-w-[80px] transition-colors
+                  ${
+                    index < currentStep ? 'bg-primary' : 'bg-muted'
+                  }`}
               />
             )}
           </React.Fragment>

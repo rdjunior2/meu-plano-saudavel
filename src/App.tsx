@@ -16,6 +16,8 @@ import Dashboard from "./pages/Dashboard";
 import Anamnese from "./pages/Anamnese";
 import PlanoDetalhes from "./pages/PlanoDetalhes";
 import NotFound from "./pages/NotFound";
+import FormularioAlimentar from "./pages/FormularioAlimentar";
+import FormularioTreino from "./pages/FormularioTreino";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +103,16 @@ const App = () => {
               <Route path="/planos" element={
                 <ProtectedRoute>
                   <PlanoDetalhes />
+                </ProtectedRoute>
+              } />
+              <Route path="/formulario-alimentar" element={
+                <ProtectedRoute>
+                  <FormularioAlimentar />
+                </ProtectedRoute>
+              } />
+              <Route path="/formulario-treino" element={
+                <ProtectedRoute>
+                  <FormularioTreino />
                 </ProtectedRoute>
               } />
               

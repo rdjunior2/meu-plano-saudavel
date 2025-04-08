@@ -8,6 +8,9 @@ interface User {
   id: string;
   phone: string;
   name?: string;
+  formulario_alimentar_preenchido?: boolean;
+  formulario_treino_preenchido?: boolean;
+  plano_status?: string;
 }
 
 // Tipagem para o estado de autenticação

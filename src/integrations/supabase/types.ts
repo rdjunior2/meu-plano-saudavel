@@ -101,6 +101,135 @@ export type Database = {
           },
         ]
       }
+      formulario_alimentar: {
+        Row: {
+          altura_cm: number
+          bebe_cafe: boolean | null
+          consome_alcool: boolean | null
+          created_at: string
+          frequencia_atividade: number | null
+          fuma: boolean | null
+          genero: string
+          horario_trabalho: string | null
+          id: string
+          idade: number
+          nome_completo: string
+          objetivo: string
+          peso_kg: number
+          pratica_atividade: boolean | null
+          preferencia_alimentar: string | null
+          refeicoes_dia: number | null
+          restricao_alimentar: boolean | null
+          restricoes: string[] | null
+          rotina_sono: string | null
+          tipo_atividade: string | null
+          updated_at: string
+          usuario_id: string
+        }
+        Insert: {
+          altura_cm: number
+          bebe_cafe?: boolean | null
+          consome_alcool?: boolean | null
+          created_at?: string
+          frequencia_atividade?: number | null
+          fuma?: boolean | null
+          genero: string
+          horario_trabalho?: string | null
+          id?: string
+          idade: number
+          nome_completo: string
+          objetivo: string
+          peso_kg: number
+          pratica_atividade?: boolean | null
+          preferencia_alimentar?: string | null
+          refeicoes_dia?: number | null
+          restricao_alimentar?: boolean | null
+          restricoes?: string[] | null
+          rotina_sono?: string | null
+          tipo_atividade?: string | null
+          updated_at?: string
+          usuario_id: string
+        }
+        Update: {
+          altura_cm?: number
+          bebe_cafe?: boolean | null
+          consome_alcool?: boolean | null
+          created_at?: string
+          frequencia_atividade?: number | null
+          fuma?: boolean | null
+          genero?: string
+          horario_trabalho?: string | null
+          id?: string
+          idade?: number
+          nome_completo?: string
+          objetivo?: string
+          peso_kg?: number
+          pratica_atividade?: boolean | null
+          preferencia_alimentar?: string | null
+          refeicoes_dia?: number | null
+          restricao_alimentar?: boolean | null
+          restricoes?: string[] | null
+          rotina_sono?: string | null
+          tipo_atividade?: string | null
+          updated_at?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
+      formulario_treino: {
+        Row: {
+          acompanhamento_profissional: boolean | null
+          created_at: string
+          exercicios_favoritos: string[] | null
+          exercicios_menos_gostados: string[] | null
+          frequencia_semanal: number
+          id: string
+          lesoes: string[] | null
+          local_treino: string
+          nivel_condicionamento: string
+          objetivo_treino: string
+          possui_lesao: boolean | null
+          tempo_disponivel: number
+          treina_atualmente: boolean | null
+          updated_at: string
+          usuario_id: string
+        }
+        Insert: {
+          acompanhamento_profissional?: boolean | null
+          created_at?: string
+          exercicios_favoritos?: string[] | null
+          exercicios_menos_gostados?: string[] | null
+          frequencia_semanal: number
+          id?: string
+          lesoes?: string[] | null
+          local_treino: string
+          nivel_condicionamento: string
+          objetivo_treino: string
+          possui_lesao?: boolean | null
+          tempo_disponivel: number
+          treina_atualmente?: boolean | null
+          updated_at?: string
+          usuario_id: string
+        }
+        Update: {
+          acompanhamento_profissional?: boolean | null
+          created_at?: string
+          exercicios_favoritos?: string[] | null
+          exercicios_menos_gostados?: string[] | null
+          frequencia_semanal?: number
+          id?: string
+          lesoes?: string[] | null
+          local_treino?: string
+          nivel_condicionamento?: string
+          objetivo_treino?: string
+          possui_lesao?: boolean | null
+          tempo_disponivel?: number
+          treina_atualmente?: boolean | null
+          updated_at?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       meal_plans: {
         Row: {
           created_at: string
@@ -143,25 +272,34 @@ export type Database = {
         Row: {
           created_at: string
           form_completed: boolean | null
+          formulario_alimentar_preenchido: boolean | null
+          formulario_treino_preenchido: boolean | null
           id: string
           name: string | null
           phone: string
+          plano_status: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           form_completed?: boolean | null
+          formulario_alimentar_preenchido?: boolean | null
+          formulario_treino_preenchido?: boolean | null
           id: string
           name?: string | null
           phone: string
+          plano_status?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           form_completed?: boolean | null
+          formulario_alimentar_preenchido?: boolean | null
+          formulario_treino_preenchido?: boolean | null
           id?: string
           name?: string | null
           phone?: string
+          plano_status?: string | null
           updated_at?: string
         }
         Relationships: []
