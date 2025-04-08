@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,21 +50,25 @@ const App = () => {
         };
         login(userData.phone, session.access_token, userData);
         
-        // Fetch profile data
-        const { data: profileData, error } = await supabase
-          .from('profiles')
-          .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error) {
-          console.error('Error fetching profile:', error);
-        } else if (profileData) {
-          updateUser({
-            formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
-            formulario_treino_preenchido: profileData.formulario_treino_preenchido,
-            plano_status: profileData.plano_status
-          });
+        try {
+          // Fetch profile data
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching profile:', error);
+          } else if (profileData) {
+            updateUser({
+              formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
+              formulario_treino_preenchido: profileData.formulario_treino_preenchido,
+              plano_status: profileData.plano_status
+            });
+          }
+        } catch (error) {
+          console.error('Error during profile fetch:', error);
         }
       }
     };
@@ -81,21 +86,25 @@ const App = () => {
           };
           login(userData.phone, session.access_token, userData);
           
-          // Fetch profile data
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
-            .eq('id', session.user.id)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching profile:', error);
-          } else if (profileData) {
-            updateUser({
-              formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
-              formulario_treino_preenchido: profileData.formulario_treino_preenchido,
-              plano_status: profileData.plano_status
-            });
+          try {
+            // Fetch profile data
+            const { data: profileData, error } = await supabase
+              .from('profiles')
+              .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (error) {
+              console.error('Error fetching profile:', error);
+            } else if (profileData) {
+              updateUser({
+                formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
+                formulario_treino_preenchido: profileData.formulario_treino_preenchido,
+                plano_status: profileData.plano_status
+              });
+            }
+          } catch (error) {
+            console.error('Error during profile fetch:', error);
           }
         } else if (event === 'SIGNED_OUT') {
           logout();
