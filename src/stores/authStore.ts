@@ -1,6 +1,6 @@
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tipagem para o usuário
@@ -61,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "meu-plano-auth",
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         user: state.user,
         isAuthenticated: state.isAuthenticated,

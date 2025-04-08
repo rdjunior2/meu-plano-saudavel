@@ -6,7 +6,8 @@ import { Apple, Dumbbell, User, LogOut } from "lucide-react";
 import { useAuthStore } from '@/stores/authStore';
 
 const Navbar = () => {
-  const { isAuthenticated, logout } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const location = useLocation();
 
