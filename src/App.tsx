@@ -35,6 +35,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   const login = useAuthStore((state) => state.login);
   const logout = useAuthStore((state) => state.logout);
+  const updateUser = useAuthStore((state) => state.updateUser);
 
   // Setup Supabase auth state listener
   useEffect(() => {
@@ -48,6 +49,21 @@ const App = () => {
           name: session.user.user_metadata.name || "",
         };
         login(userData.phone, session.access_token, userData);
+        
+        // Fetch profile data
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (profileData) {
+          updateUser({
+            formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
+            formulario_treino_preenchido: profileData.formulario_treino_preenchido,
+            plano_status: profileData.plano_status
+          });
+        }
       }
     };
     
@@ -63,6 +79,21 @@ const App = () => {
             name: session.user.user_metadata.name || "",
           };
           login(userData.phone, session.access_token, userData);
+          
+          // Fetch profile data
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileData) {
+            updateUser({
+              formulario_alimentar_preenchido: profileData.formulario_alimentar_preenchido,
+              formulario_treino_preenchido: profileData.formulario_treino_preenchido,
+              plano_status: profileData.plano_status
+            });
+          }
         } else if (event === 'SIGNED_OUT') {
           logout();
         }
@@ -73,7 +104,7 @@ const App = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [login, logout]);
+  }, [login, logout, updateUser]);
 
   return (
     <QueryClientProvider client={queryClient}>

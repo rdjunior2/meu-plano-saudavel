@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +13,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore((state) => ({ 
+  const { user, isAuthenticated, updateUser } = useAuthStore((state) => ({ 
     user: state.user, 
-    isAuthenticated: state.isAuthenticated 
+    isAuthenticated: state.isAuthenticated,
+    updateUser: state.updateUser
   }));
   const { mealPlan, workoutPlan, planStatus, pdfUrl } = usePlanStore();
   const [formStatus, setFormStatus] = useState({
@@ -41,19 +43,32 @@ const Dashboard = () => {
         .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
 
-      setFormStatus({
-        alimentar: data.formulario_alimentar_preenchido || false,
-        treino: data.formulario_treino_preenchido || false,
-        bothCompleted: (data.formulario_alimentar_preenchido && data.formulario_treino_preenchido) || false
-      });
+      if (data) {
+        // Update the local state
+        setFormStatus({
+          alimentar: data.formulario_alimentar_preenchido || false,
+          treino: data.formulario_treino_preenchido || false,
+          bothCompleted: (data.formulario_alimentar_preenchido && data.formulario_treino_preenchido) || false
+        });
 
-      // If status has changed from "aguardando", update the local state
-      if (data.plano_status && data.plano_status !== 'aguardando' && planStatus === 'awaiting') {
-        const newStatus: PlanStatus = data.plano_status === 'processando' ? 'processing' : 
-                                    data.plano_status === 'pronto' ? 'ready' : 'awaiting';
-        // Consider updating planStore status here
+        // Update the user state in the auth store
+        updateUser({
+          formulario_alimentar_preenchido: data.formulario_alimentar_preenchido,
+          formulario_treino_preenchido: data.formulario_treino_preenchido,
+          plano_status: data.plano_status
+        });
+
+        // If status has changed from "aguardando", update the local state
+        if (data.plano_status && data.plano_status !== 'aguardando' && planStatus === 'awaiting') {
+          const newStatus: PlanStatus = data.plano_status === 'processando' ? 'processing' : 
+                                      data.plano_status === 'pronto' ? 'ready' : 'awaiting';
+          // Consider updating planStore status here
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar status dos formulários:', error);

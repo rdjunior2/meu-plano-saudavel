@@ -50,7 +50,7 @@ const step3Schema = z.object({
 // Types for the form data
 type Step1FormValues = z.infer<typeof step1Schema>;
 type Step2FormValues = z.infer<typeof step2Schema>;
-type Step3FormValues = z.infer<typeof step3FormValues>;
+type Step3FormValues = z.infer<typeof step3Schema>;
 
 type FormularioAlimentarValues = Step1FormValues & Step2FormValues & Step3FormValues;
 
@@ -58,9 +58,10 @@ const FormularioAlimentar = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, isAuthenticated } = useAuthStore((state) => ({ 
+  const { user, isAuthenticated, updateUser } = useAuthStore((state) => ({ 
     user: state.user, 
-    isAuthenticated: state.isAuthenticated 
+    isAuthenticated: state.isAuthenticated,
+    updateUser: state.updateUser
   }));
 
   const steps = ["Dados Pessoais", "Rotina", "Hábitos"];
@@ -167,19 +168,32 @@ const FormularioAlimentar = () => {
       }
 
       // Update profile status
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
-        .update({ formulario_alimentar_preenchido: true })
+        .update({
+          formulario_alimentar_preenchido: true
+        })
         .eq('id', user.id);
+        
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      }
+      
+      // Update local state
+      updateUser({ formulario_alimentar_preenchido: true });
 
       toast.success("Formulário alimentar enviado com sucesso!");
 
       // Check if workout form is also completed
-      const { data: profile } = await supabase
+      const { data: profile, error: profileFetchError } = await supabase
         .from('profiles')
         .select('formulario_treino_preenchido')
         .eq('id', user.id)
         .single();
+
+      if (profileFetchError) {
+        console.error('Error fetching profile:', profileFetchError);
+      }
 
       if (profile?.formulario_treino_preenchido) {
         navigate('/dashboard');
