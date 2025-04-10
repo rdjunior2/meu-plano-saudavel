@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Apple, Dumbbell, User, LogOut, MenuIcon } from "lucide-react";
+import { Apple, Dumbbell, User, LogOut, MenuIcon, Settings } from "lucide-react";
 import { useAuthStore } from '@/stores/authStore';
 import { 
   Sheet, 
@@ -13,15 +12,14 @@ import {
 } from "@/components/ui/sheet";
 
 const Navbar = () => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const logout = useAuthStore((state) => state.logout);
+  const { isAuthenticated, user, logout: logoutFn } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = React.useCallback(async () => {
+    await logoutFn();
     navigate('/login');
-  };
+  }, [logoutFn, navigate]);
 
   // Não mostrar a navbar nas páginas de autenticação
   if (location.pathname === '/login' || location.pathname === '/register') {
@@ -56,6 +54,12 @@ const Navbar = () => {
               <Link to="/planos" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 Meus Planos
               </Link>
+              {user?.is_admin && (
+                <Link to="/admin" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  <Settings className="h-4 w-4 inline-block mr-1" />
+                  Admin
+                </Link>
+              )}
               <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Sair">
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -99,6 +103,15 @@ const Navbar = () => {
                   >
                     Meus Planos
                   </Link>
+                  {user?.is_admin && (
+                    <Link 
+                      to="/admin" 
+                      className="flex items-center gap-2 px-2 py-2 text-sm font-medium rounded-md hover:bg-accent"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Admin
+                    </Link>
+                  )}
                   <Button 
                     variant="ghost" 
                     className="flex items-center justify-start gap-2 px-2 py-2 text-sm font-medium rounded-md hover:bg-accent w-full" 
@@ -117,4 +130,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default React.memo(Navbar);

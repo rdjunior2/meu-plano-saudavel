@@ -8,6 +8,7 @@ export interface User {
   nome: string;
   telefone: string;
   status: string;
+  is_admin?: boolean;
   formulario_alimentar_preenchido?: boolean;
   formulario_treino_preenchido?: boolean;
 }

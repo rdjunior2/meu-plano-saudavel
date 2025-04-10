@@ -6,682 +6,85 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
-      anamnesis_forms: {
-        Row: {
-          alergias: string[] | null
-          alimentos_indesejados: string[] | null
-          altura: number
-          atividade_fisica: string | null
-          created_at: string
-          dias_treino: number | null
-          doencas: string[] | null
-          genero: string
-          horario_acordar: string | null
-          horario_dormir: string | null
-          id: string
-          idade: number
-          local_treino: string | null
-          medicamentos: string[] | null
-          nivel_atividade: string | null
-          objetivo: string
-          observacoes: string | null
-          peso: number
-          preferencias_alimentares: string[] | null
-          refeicoes_dia: number | null
-          restricoes: string[] | null
-          rotina: string | null
-          tempo_disponivel: number | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          alergias?: string[] | null
-          alimentos_indesejados?: string[] | null
-          altura: number
-          atividade_fisica?: string | null
-          created_at?: string
-          dias_treino?: number | null
-          doencas?: string[] | null
-          genero: string
-          horario_acordar?: string | null
-          horario_dormir?: string | null
-          id?: string
-          idade: number
-          local_treino?: string | null
-          medicamentos?: string[] | null
-          nivel_atividade?: string | null
-          objetivo: string
-          observacoes?: string | null
-          peso: number
-          preferencias_alimentares?: string[] | null
-          refeicoes_dia?: number | null
-          restricoes?: string[] | null
-          rotina?: string | null
-          tempo_disponivel?: number | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          alergias?: string[] | null
-          alimentos_indesejados?: string[] | null
-          altura?: number
-          atividade_fisica?: string | null
-          created_at?: string
-          dias_treino?: number | null
-          doencas?: string[] | null
-          genero?: string
-          horario_acordar?: string | null
-          horario_dormir?: string | null
-          id?: string
-          idade?: number
-          local_treino?: string | null
-          medicamentos?: string[] | null
-          nivel_atividade?: string | null
-          objetivo?: string
-          observacoes?: string | null
-          peso?: number
-          preferencias_alimentares?: string[] | null
-          refeicoes_dia?: number | null
-          restricoes?: string[] | null
-          rotina?: string | null
-          tempo_disponivel?: number | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "anamnesis_forms_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      formulario_alimentar: {
-        Row: {
-          altura_cm: number
-          bebe_cafe: boolean | null
-          consome_alcool: boolean | null
-          created_at: string
-          frequencia_atividade: number | null
-          fuma: boolean | null
-          genero: string
-          horario_trabalho: string | null
-          id: string
-          idade: number
-          nome_completo: string
-          objetivo: string
-          peso_kg: number
-          pratica_atividade: boolean | null
-          preferencia_alimentar: string | null
-          refeicoes_dia: number | null
-          restricao_alimentar: boolean | null
-          restricoes: string[] | null
-          rotina_sono: string | null
-          tipo_atividade: string | null
-          updated_at: string
-          usuario_id: string
-        }
-        Insert: {
-          altura_cm: number
-          bebe_cafe?: boolean | null
-          consome_alcool?: boolean | null
-          created_at?: string
-          frequencia_atividade?: number | null
-          fuma?: boolean | null
-          genero: string
-          horario_trabalho?: string | null
-          id?: string
-          idade: number
-          nome_completo: string
-          objetivo: string
-          peso_kg: number
-          pratica_atividade?: boolean | null
-          preferencia_alimentar?: string | null
-          refeicoes_dia?: number | null
-          restricao_alimentar?: boolean | null
-          restricoes?: string[] | null
-          rotina_sono?: string | null
-          tipo_atividade?: string | null
-          updated_at?: string
-          usuario_id: string
-        }
-        Update: {
-          altura_cm?: number
-          bebe_cafe?: boolean | null
-          consome_alcool?: boolean | null
-          created_at?: string
-          frequencia_atividade?: number | null
-          fuma?: boolean | null
-          genero?: string
-          horario_trabalho?: string | null
-          id?: string
-          idade?: number
-          nome_completo?: string
-          objetivo?: string
-          peso_kg?: number
-          pratica_atividade?: boolean | null
-          preferencia_alimentar?: string | null
-          refeicoes_dia?: number | null
-          restricao_alimentar?: boolean | null
-          restricoes?: string[] | null
-          rotina_sono?: string | null
-          tipo_atividade?: string | null
-          updated_at?: string
-          usuario_id?: string
-        }
-        Relationships: []
-      }
-      formulario_treino: {
-        Row: {
-          acompanhamento_profissional: boolean | null
-          created_at: string
-          exercicios_favoritos: string[] | null
-          exercicios_menos_gostados: string[] | null
-          frequencia_semanal: number
-          id: string
-          lesoes: string[] | null
-          local_treino: string
-          nivel_condicionamento: string
-          objetivo_treino: string
-          possui_lesao: boolean | null
-          tempo_disponivel: number
-          treina_atualmente: boolean | null
-          updated_at: string
-          usuario_id: string
-        }
-        Insert: {
-          acompanhamento_profissional?: boolean | null
-          created_at?: string
-          exercicios_favoritos?: string[] | null
-          exercicios_menos_gostados?: string[] | null
-          frequencia_semanal: number
-          id?: string
-          lesoes?: string[] | null
-          local_treino: string
-          nivel_condicionamento: string
-          objetivo_treino: string
-          possui_lesao?: boolean | null
-          tempo_disponivel: number
-          treina_atualmente?: boolean | null
-          updated_at?: string
-          usuario_id: string
-        }
-        Update: {
-          acompanhamento_profissional?: boolean | null
-          created_at?: string
-          exercicios_favoritos?: string[] | null
-          exercicios_menos_gostados?: string[] | null
-          frequencia_semanal?: number
-          id?: string
-          lesoes?: string[] | null
-          local_treino?: string
-          nivel_condicionamento?: string
-          objetivo_treino?: string
-          possui_lesao?: boolean | null
-          tempo_disponivel?: number
-          treina_atualmente?: boolean | null
-          updated_at?: string
-          usuario_id?: string
-        }
-        Relationships: []
-      }
       meal_plans: {
         Row: {
+          id: string
           created_at: string
+          updated_at: string
+          title: string
           description: string | null
-          id: string
           meals: Json
-          title: string
-          updated_at: string
           user_id: string
+          status: string
+          data_inicio: string | null
+          data_fim: string | null
         }
         Insert: {
-          created_at?: string
-          description?: string | null
           id?: string
+          created_at?: string
+          updated_at?: string
+          title: string
+          description?: string | null
           meals: Json
-          title: string
-          updated_at?: string
           user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          meals?: Json
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "meal_plans_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          form_completed: boolean | null
-          formulario_alimentar_preenchido: boolean | null
-          formulario_treino_preenchido: boolean | null
-          id: string
-          name: string | null
-          phone: string
-          plano_status: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          form_completed?: boolean | null
-          formulario_alimentar_preenchido?: boolean | null
-          formulario_treino_preenchido?: boolean | null
-          id: string
-          name?: string | null
-          phone: string
-          plano_status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          form_completed?: boolean | null
-          formulario_alimentar_preenchido?: boolean | null
-          formulario_treino_preenchido?: boolean | null
-          id?: string
-          name?: string | null
-          phone?: string
-          plano_status?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      user_plans: {
-        Row: {
-          created_at: string
-          id: string
-          meal_plan_id: string | null
-          pdf_url: string | null
-          status: string
-          updated_at: string
-          user_id: string
-          workout_plan_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          meal_plan_id?: string | null
-          pdf_url?: string | null
-          status: string
-          updated_at?: string
-          user_id: string
-          workout_plan_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          meal_plan_id?: string | null
-          pdf_url?: string | null
           status?: string
-          updated_at?: string
-          user_id?: string
-          workout_plan_id?: string | null
+          data_inicio?: string | null
+          data_fim?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_plans_meal_plan_id_fkey"
-            columns: ["meal_plan_id"]
-            isOneToOne: false
-            referencedRelation: "meal_plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_plans_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_plans_workout_plan_id_fkey"
-            columns: ["workout_plan_id"]
-            isOneToOne: false
-            referencedRelation: "workout_plans"
-            referencedColumns: ["id"]
-          },
-        ]
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          title?: string
+          description?: string | null
+          meals?: Json
+          user_id?: string
+          status?: string
+          data_inicio?: string | null
+          data_fim?: string | null
+        }
       }
       workout_plans: {
         Row: {
+          id: string
           created_at: string
-          days: Json
-          description: string | null
-          id: string
-          title: string
           updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          days: Json
-          description?: string | null
-          id?: string
           title: string
-          updated_at?: string
+          description: string | null
+          days: Json
           user_id: string
+          status: string
+          data_inicio: string | null
+          data_fim: string | null
         }
-        Update: {
+        Insert: {
+          id?: string
           created_at?: string
-          days?: Json
-          description?: string | null
-          id?: string
-          title?: string
           updated_at?: string
+          title: string
+          description?: string | null
+          days: Json
+          user_id: string
+          status?: string
+          data_inicio?: string | null
+          data_fim?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          title?: string
+          description?: string | null
+          days?: Json
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workout_plans_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      usuarios: {
-        Row: {
-          id: string
-          nome: string
-          telefone: string
-          email: string | null
-          senha_hash: string | null
-          status: string
-          data_criacao: string
-        }
-        Insert: {
-          id?: string
-          nome: string
-          telefone: string
-          email?: string | null
-          senha_hash?: string | null
           status?: string
-          data_criacao?: string
+          data_inicio?: string | null
+          data_fim?: string | null
         }
-        Update: {
-          id?: string
-          nome?: string
-          telefone?: string
-          email?: string | null
-          senha_hash?: string | null
-          status?: string
-          data_criacao?: string
-        }
-        Relationships: []
       }
-      formularios_alimentacao: {
-        Row: {
-          id: string
-          id_usuario: string
-          idade: number
-          altura: number
-          peso: number
-          sexo: string
-          objetivo: string
-          restricao: string | null
-          preferencias: string | null
-          data_criacao: string
-        }
-        Insert: {
-          id?: string
-          id_usuario: string
-          idade: number
-          altura: number
-          peso: number
-          sexo: string
-          objetivo: string
-          restricao?: string | null
-          preferencias?: string | null
-          data_criacao?: string
-        }
-        Update: {
-          id?: string
-          id_usuario?: string
-          idade?: number
-          altura?: number
-          peso?: number
-          sexo?: string
-          objetivo?: string
-          restricao?: string | null
-          preferencias?: string | null
-          data_criacao?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formularios_alimentacao_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      formularios_treino: {
-        Row: {
-          id: string
-          id_usuario: string
-          ja_treina: boolean
-          frequencia: number | null
-          equipamentos: string | null
-          foco: string | null
-          limitacoes: string | null
-          data_criacao: string
-        }
-        Insert: {
-          id?: string
-          id_usuario: string
-          ja_treina: boolean
-          frequencia?: number | null
-          equipamentos?: string | null
-          foco?: string | null
-          limitacoes?: string | null
-          data_criacao?: string
-        }
-        Update: {
-          id?: string
-          id_usuario?: string
-          ja_treina?: boolean
-          frequencia?: number | null
-          equipamentos?: string | null
-          foco?: string | null
-          limitacoes?: string | null
-          data_criacao?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "formularios_treino_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      planos: {
-        Row: {
-          id: string
-          id_usuario: string
-          plano_alimentar: Json | null
-          plano_treino: Json | null
-          data_geracao: string
-        }
-        Insert: {
-          id?: string
-          id_usuario: string
-          plano_alimentar?: Json | null
-          plano_treino?: Json | null
-          data_geracao?: string
-        }
-        Update: {
-          id?: string
-          id_usuario?: string
-          plano_alimentar?: Json | null
-          plano_treino?: Json | null
-          data_geracao?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planos_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      verificar_senha: {
-        Args: {
-          telefone_param: string
-          senha_param: string
-        }
-        Returns: {
-          id: string
-          nome: string
-          telefone: string
-          status: string
-          senha_valida: boolean
-        }[]
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
     }
   }
 }
-
-type DefaultSchema = Database[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
