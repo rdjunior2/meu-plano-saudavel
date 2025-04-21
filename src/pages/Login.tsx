@@ -9,13 +9,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
-import { Smartphone, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 
 const loginSchema = z.object({
-  phone: z.string()
-    .min(11, { message: "O número deve ter pelo menos 11 dígitos" })
-    .max(15, { message: "O número deve ter no máximo 15 dígitos" })
-    .regex(/^\d+$/, { message: "O número deve conter apenas dígitos" }),
+  email: z.string()
+    .email({ message: "Email inválido" })
+    .min(1, { message: "Email é obrigatório" }),
   password: z.string()
     .min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
 });
@@ -24,13 +23,13 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { loginWithPassword, checkUserByPhone } = useAuthStore();
+  const { loginWithEmail } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      phone: "",
+      email: "",
       password: "",
     },
   });
@@ -39,22 +38,8 @@ const Login = () => {
     try {
       setIsLoading(true);
       
-      // Primeiro, verificar se o usuário existe
-      const { exists, status } = await checkUserByPhone(values.phone);
-      
-      if (!exists) {
-        toast.error("Número de telefone não registrado. Verifique os dados.");
-        return;
-      }
-      
-      if (status === 'aguardando_formulario') {
-        // Redirecionar para criação de senha
-        navigate(`/criar-senha?phone=${values.phone}`);
-        return;
-      }
-      
-      // Tentar fazer login
-      const { success, error } = await loginWithPassword(values.phone, values.password);
+      // Tentar fazer login com email
+      const { success, error } = await loginWithEmail(values.email, values.password);
       
       if (!success) {
         toast.error(error || "Erro ao realizar login. Verifique seus dados.");
@@ -62,15 +47,7 @@ const Login = () => {
       }
       
       toast.success("Login realizado com sucesso!");
-      
-      // Verificar status e redirecionar conforme necessário
-      if (status === 'senha_criada') {
-        navigate("/formulario-alimentar");
-      } else if (status === 'formulario_preenchido') {
-        navigate("/dashboard");
-      } else {
-        navigate("/dashboard");
-      }
+      navigate("/dashboard");
       
     } catch (error: any) {
       toast.error("Erro ao realizar login. Tente novamente.");
@@ -86,12 +63,12 @@ const Login = () => {
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-lavender p-3">
-              <Smartphone className="h-6 w-6 text-white" />
+              <Mail className="h-6 w-6 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
           <CardDescription className="text-center">
-            Entre com seu número de WhatsApp e senha
+            Entre com seu email e senha
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,14 +76,14 @@ const Login = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="phone"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Número de WhatsApp</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Smartphone className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="11999999999" className="pl-10" {...field} />
+                        <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                        <Input placeholder="seu@email.com" className="pl-10" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />

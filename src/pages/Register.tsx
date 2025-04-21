@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,10 +9,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
-import { UserPlus, Smartphone, Lock } from 'lucide-react';
+import { UserPlus, Smartphone, Lock, Mail, User } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 
 const registerSchema = z.object({
+  name: z.string()
+    .min(3, { message: "O nome deve ter pelo menos 3 caracteres" }),
+  email: z.string()
+    .email({ message: "Email inválido" }),
   phone: z.string()
     .min(11, { message: "O número deve ter pelo menos 11 dígitos" })
     .max(15, { message: "O número deve ter no máximo 15 dígitos" })
@@ -37,6 +40,8 @@ const Register = () => {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      name: "",
+      email: "",
       phone: "",
       password: "",
       confirmPassword: "",
@@ -48,14 +53,12 @@ const Register = () => {
       setIsLoading(true);
       
       // Sign up with Supabase using email+password
-      // We format the phone as an email to work with Supabase auth
-      const email = `${values.phone}@meuplanosaude.app`;
-      
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: values.email,
         password: values.password,
         options: {
           data: {
+            name: values.name,
             phone: values.phone,
           }
         }
@@ -66,16 +69,23 @@ const Register = () => {
       }
       
       if (data.user) {
-        // Create a user object from Supabase auth response
-        const user = {
-          id: data.user.id,
-          phone: values.phone,
-        };
+        // Criar o perfil do usuário
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            nome: values.name,
+            email: values.email,
+            telefone: values.phone,
+            status_geral: 'ativo'
+          });
         
-        // Store auth data in the auth store
-        login(values.phone, data.session ? data.session.access_token : "", user);
-        toast.success("Conta criada com sucesso!");
-        navigate("/anamnese");
+        if (profileError) {
+          throw profileError;
+        }
+        
+        toast.success("Conta criada com sucesso! Verifique seu email para ativar sua conta.");
+        navigate("/login");
       }
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta. Tente novamente.");
@@ -96,12 +106,44 @@ const Register = () => {
           </div>
           <CardTitle className="text-2xl font-bold text-center">Criar Conta</CardTitle>
           <CardDescription className="text-center">
-            Registre-se com seu número de WhatsApp
+            Cadastre-se com seu email para começar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome completo</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                        <Input placeholder="Seu nome completo" className="pl-10" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                        <Input placeholder="seu@email.com" className="pl-10" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="phone"

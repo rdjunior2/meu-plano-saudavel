@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { usePurchaseStore } from '@/stores/purchaseStore';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
@@ -23,7 +24,8 @@ export type FormularioTreinoValues = z.infer<typeof formularioTreinoSchema>;
 export const useFormularioTreino = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, updateUser } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activePurchase, submitFormResponse } = usePurchaseStore();
 
   // Setup form
   const form = useForm<FormularioTreinoValues>({
@@ -45,38 +47,48 @@ export const useFormularioTreino = () => {
         return;
       }
 
+      if (!activePurchase) {
+        toast.error("Nenhuma compra ativa encontrada.");
+        return;
+      }
+
       setIsSubmitting(true);
 
       // Converter string para boolean
       const jaTreinaBoolean = values.ja_treina === "Sim";
 
-      // Salvar no Supabase
-      const { error } = await supabase
-        .from('formularios_treino')
-        .insert({
-          id_usuario: user.id,
+      // Encontrar o produto do tipo treino na compra ativa
+      const workoutItem = activePurchase.items.find(item => item.product_type === "workout");
+      
+      if (!workoutItem) {
+        toast.error("Produto relacionado ao plano de treino não encontrado na sua compra.");
+        return;
+      }
+
+      // Preparar os dados da resposta
+      const formData = {
+        userId: user.id,
+        formType: "treino",
+        purchaseId: activePurchase.id,
+        productId: workoutItem.product_id,
+        responses: {
           ja_treina: jaTreinaBoolean,
           frequencia: values.frequencia,
           equipamentos: values.equipamentos,
           foco: values.foco,
-          limitacoes: values.limitacoes
-        });
+          limitacoes: values.limitacoes,
+          data_envio: new Date().toISOString()
+        }
+      };
 
-      if (error) {
-        throw error;
+      // Enviar resposta usando o purchaseStore
+      const success = await submitFormResponse(formData);
+
+      if (!success) {
+        throw new Error("Falha ao enviar formulário. Tente novamente.");
       }
 
-      // Atualizar status do usuário localmente
-      updateUser({ formulario_treino_preenchido: true });
-      
       toast.success("Formulário de treino enviado com sucesso!");
-      
-      // Verificar se o formulário alimentar já foi preenchido
-      const { data: formAlimentar, error: alimentarError } = await supabase
-        .from('formularios_alimentacao')
-        .select('id')
-        .eq('id_usuario', user.id)
-        .single();
 
       // Redirecionar para o dashboard
       navigate('/dashboard');

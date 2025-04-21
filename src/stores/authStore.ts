@@ -1,152 +1,151 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { supabase } from '@/integrations/supabase/client';
-import bcrypt from 'bcryptjs';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { User } from '../types/user';
+import Cookies from 'js-cookie';
+import { 
+  loginWithEmail as serviceLoginWithEmail,
+  logout as serviceLogout,
+  registerUser,
+  updateUserProfile,
+  checkPhoneExists
+} from '../services/auth';
 
-export interface User {
-  id: string;
-  nome: string;
-  telefone: string;
-  status: string;
-  is_admin?: boolean;
-  formulario_alimentar_preenchido?: boolean;
-  formulario_treino_preenchido?: boolean;
-}
+// Armazenamento seguro baseado em cookies
+const secureStorage = {
+  getItem: () => {
+    const userStr = Cookies.get('user_data');
+    return userStr ? Promise.resolve(userStr) : Promise.resolve(null);
+  },
+  setItem: (_name: string, value: string) => {
+    Cookies.set('user_data', value, { 
+      expires: 7, // 7 dias
+      secure: import.meta.env.PROD,
+      sameSite: 'strict'
+    });
+    return Promise.resolve();
+  },
+  removeItem: () => {
+    Cookies.remove('user_data');
+    return Promise.resolve();
+  }
+};
 
 interface AuthState {
-  token: string | null;
   user: User | null;
   isAuthenticated: boolean;
   login: (userData: User, token: string) => void;
   logout: () => Promise<void>;
-  updateUser: (data: Partial<User>) => void;
-  checkUserByPhone: (phone: string) => Promise<{exists: boolean, status: string | null}>;
-  loginWithPassword: (phone: string, password: string) => Promise<{success: boolean, user?: User, error?: string}>;
-  createPassword: (phone: string, password: string) => Promise<{success: boolean, error?: string}>;
+  setIsAuthenticated: (value: boolean) => void;
+  updateUser: (data: Partial<User>) => Promise<{success: boolean, error?: string}>;
+  checkUserByPhone: (phone: string) => Promise<{exists: boolean, status: string | null, userId: string | null}>;
+  loginWithEmail: (email: string, password: string) => Promise<{success: boolean, user?: User, error?: string}>;
+  registerWithEmail: (email: string, password: string, userData: Partial<User>) => Promise<{success: boolean, user?: User, error?: string, warning?: string}>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      token: null,
       user: null,
       isAuthenticated: false,
+      
       login: (userData, token) => set({
-        token,
         user: userData,
         isAuthenticated: true,
       }),
+      
+      setIsAuthenticated: (value) => set({
+        isAuthenticated: value
+      }),
+      
       logout: async () => {
-        await supabase.auth.signOut();
-        set({
-          token: null,
-          user: null,
-          isAuthenticated: false,
-        });
+        try {
+          await serviceLogout();
+          set({
+            user: null,
+            isAuthenticated: false,
+          });
+        } catch (error) {
+          console.error('Erro ao fazer logout:', error);
+        }
       },
-      updateUser: (data) => set((state) => ({
-        user: state.user ? { ...state.user, ...data } : null,
-      })),
+      
+      updateUser: async (data) => {
+        if (!get().user?.id) {
+          return { success: false, error: 'Usuário não autenticado' };
+        }
+        
+        const result = await updateUserProfile(get().user.id, data);
+        
+        if (result.success) {
+          set((state) => ({
+            user: state.user ? { ...state.user, ...data } : null,
+          }));
+        }
+        
+        return result;
+      },
       
       // Verificar se o usuário existe por telefone
       checkUserByPhone: async (phone) => {
-        try {
-          const { data, error } = await supabase
-            .from('usuarios')
-            .select('status')
-            .eq('telefone', phone)
-            .single();
-            
-          if (error) {
-            console.error('Erro ao verificar usuário:', error);
-            return { exists: false, status: null };
-          }
-          
-          return { exists: !!data, status: data?.status || null };
-        } catch (error) {
-          console.error('Erro ao verificar usuário:', error);
-          return { exists: false, status: null };
-        }
+        const result = await checkPhoneExists(phone);
+        return {
+          exists: result.exists,
+          status: result.status,
+          userId: result.userId
+        };
       },
       
-      // Login com telefone e senha
-      loginWithPassword: async (phone, password) => {
-        try {
-          // Usar a função rpc do Supabase para verificar a senha
-          const { data, error } = await supabase.rpc('verificar_senha', {
-            telefone_param: phone,
-            senha_param: password
+      // Login com email e senha
+      loginWithEmail: async (email, password) => {
+        const result = await serviceLoginWithEmail(email, password);
+        
+        if (result.success && result.user) {
+          set({
+            user: result.user,
+            isAuthenticated: true,
           });
-          
-          if (error) {
-            console.error('Erro ao fazer login:', error);
-            return { success: false, error: 'Erro ao autenticar. Tente novamente.' };
-          }
-          
-          if (data.length === 0 || !data[0].senha_valida) {
-            return { success: false, error: 'Telefone ou senha incorretos.' };
-          }
-          
-          const user = {
-            id: data[0].id,
-            nome: data[0].nome,
-            telefone: data[0].telefone,
-            status: data[0].status
+        }
+        
+        return result;
+      },
+      
+      // Registrar novo usuário
+      registerWithEmail: async (email, password, userData) => {
+        const result = await registerUser(email, password, userData);
+        
+        if (result.success && result.user) {
+          // O tipo User do Supabase Auth não corresponde ao nosso User
+          // Então criamos um objeto User baseado nas informações disponíveis
+          const user: User = {
+            id: result.user.id,
+            nome: userData.nome || 'Usuário',
+            telefone: userData.telefone || '',
+            email: email,
+            status: 'ativo'
           };
           
-          // Gerar token JWT customizado para autenticação
-          const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
-            email: `${phone}@placeholderemail.com`,
-            password
+          set({
+            user,
+            isAuthenticated: true,
           });
           
-          if (sessionError) {
-            console.error('Erro ao gerar token:', sessionError);
-            return { success: false, error: 'Erro ao gerar token de autenticação.' };
-          }
-          
-          // Login do usuário
-          get().login(user, sessionData.session.access_token);
-          
-          return { success: true, user };
-        } catch (error) {
-          console.error('Erro ao fazer login:', error);
-          return { success: false, error: 'Ocorreu um erro inesperado.' };
+          return {
+            success: true,
+            user,
+            warning: result.warning
+          };
         }
-      },
-      
-      // Criar senha para o usuário
-      createPassword: async (phone, password) => {
-        try {
-          // Gerar hash da senha
-          const saltRounds = 10;
-          const passwordHash = await bcrypt.hash(password, saltRounds);
-          
-          // Atualizar o usuário com a senha
-          const { error } = await supabase
-            .from('usuarios')
-            .update({ 
-              senha_hash: passwordHash,
-              status: 'senha_criada'
-            })
-            .eq('telefone', phone);
-            
-          if (error) {
-            console.error('Erro ao criar senha:', error);
-            return { success: false, error: 'Erro ao salvar senha. Tente novamente.' };
-          }
-          
-          return { success: true };
-        } catch (error) {
-          console.error('Erro ao criar senha:', error);
-          return { success: false, error: 'Ocorreu um erro inesperado.' };
-        }
+        
+        return {
+          success: false,
+          error: result.error
+        };
       }
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => secureStorage),
       partialize: (state) => ({
-        token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

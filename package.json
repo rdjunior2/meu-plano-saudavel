@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "backup": "node -e \"const fs=require('fs');const path=require('path');const backupDir=path.join(__dirname,'..','backups');if(!fs.existsSync(backupDir)){fs.mkdirSync(backupDir,{recursive:true})};const cp=require('child_process');const date=new Date();const timestamp=`${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;const backupPath=path.join(backupDir,`projeto_backup_${timestamp}.zip`);console.log(`Criando backup em: ${backupPath}`);cp.execSync(`tar -cf ${backupPath} --exclude=node_modules --exclude=.git .`,{stdio:'inherit'});console.log('Backup concluído com sucesso!');\""
+    "backup": "node -e \"const fs=require('fs');const path=require('path');const backupDir=path.join(__dirname,'..','backups');if(!fs.existsSync(backupDir)){fs.mkdirSync(backupDir,{recursive:true})};const cp=require('child_process');const date=new Date();const timestamp=`${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;const backupPath=path.join(backupDir,`projeto_backup_${timestamp}.zip`);console.log(`Criando backup em: ${backupPath}`);cp.execSync(`tar -cf ${backupPath} --exclude=node_modules --exclude=.git .`,{stdio:'inherit'});console.log('Backup concluído com sucesso!');\"",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -43,13 +45,18 @@
     "@supabase/supabase-js": "^2.49.4",
     "@tanstack/react-query": "^5.56.2",
     "@types/bcryptjs": "^2.4.6",
+    "@types/js-cookie": "^3.0.6",
+    "@types/uuid": "^10.0.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.3.0",
+    "framer-motion": "^12.7.3",
     "input-otp": "^1.2.4",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
@@ -62,6 +69,7 @@
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.1.0",
     "vaul": "^0.9.3",
     "zod": "^3.23.8",
     "zustand": "^5.0.3"
@@ -69,6 +77,8 @@
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -79,11 +89,13 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
+    "jsdom": "^26.1.0",
     "lovable-tagger": "^1.1.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1"
+    "vite": "^5.4.1",
+    "vitest": "^3.1.1"
   }
 }

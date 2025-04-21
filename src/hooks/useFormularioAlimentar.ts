@@ -4,22 +4,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { usePurchaseStore } from '@/stores/purchaseStore';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
 // Schema do formulário
 export const formularioAlimentarSchema = z.object({
-  idade: z.number().min(1, "Idade é obrigatória").max(120, "Idade inválida"),
-  altura: z.number().min(50, "Altura inválida").max(250, "Altura inválida"),
-  peso: z.number().min(20, "Peso inválido").max(300, "Peso inválido"),
-  sexo: z.enum(["Masculino", "Feminino"], {
-    errorMap: () => ({ message: "Selecione uma opção" }),
-  }),
-  objetivo: z.enum(["Emagrecimento", "Ganho de Massa", "Definição", "Manutenção"], {
-    errorMap: () => ({ message: "Selecione uma opção" }),
-  }),
-  restricao: z.string().optional(),
+  objetivo: z.string().min(1, "Selecione um objetivo"),
+  peso: z.string().min(1, "Informe seu peso"),
+  altura: z.string().min(1, "Informe sua altura"),
+  restricoes: z.string().optional(),
   preferencias: z.string().optional(),
+  alergias: z.string().optional(),
+  tempo_preparo: z.string().min(1, "Selecione o tempo disponível"),
+  refeicoes_por_dia: z.number().min(1, "Informe o número de refeições").max(10, "O máximo é 10 refeições"),
 });
 
 export type FormularioAlimentarValues = z.infer<typeof formularioAlimentarSchema>;
@@ -27,19 +25,21 @@ export type FormularioAlimentarValues = z.infer<typeof formularioAlimentarSchema
 export const useFormularioAlimentar = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, updateUser } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activePurchase, submitFormResponse } = usePurchaseStore();
 
   // Setup form
   const form = useForm<FormularioAlimentarValues>({
     resolver: zodResolver(formularioAlimentarSchema),
     defaultValues: {
-      idade: 30,
-      altura: 170,
-      peso: 70,
-      sexo: "Masculino",
-      objetivo: "Emagrecimento",
-      restricao: "",
+      objetivo: "",
+      peso: "",
+      altura: "",
+      restricoes: "",
       preferencias: "",
+      alergias: "",
+      tempo_preparo: "",
+      refeicoes_por_dia: 5,
     }
   });
 
@@ -51,50 +51,52 @@ export const useFormularioAlimentar = () => {
         return;
       }
 
+      if (!activePurchase) {
+        toast.error("Nenhuma compra ativa encontrada.");
+        return;
+      }
+
       setIsSubmitting(true);
 
-      // Salvar no Supabase
-      const { error } = await supabase
-        .from('formularios_alimentacao')
-        .insert({
-          id_usuario: user.id,
-          idade: values.idade,
-          altura: values.altura,
-          peso: values.peso,
-          sexo: values.sexo,
-          objetivo: values.objetivo,
-          restricao: values.restricao,
-          preferencias: values.preferencias
-        });
-
-      if (error) {
-        throw error;
+      // Encontrar o produto do tipo meal na compra ativa
+      const mealItem = activePurchase.items.find(item => item.product_type === "meal");
+      
+      if (!mealItem) {
+        toast.error("Produto relacionado ao plano alimentar não encontrado na sua compra.");
+        return;
       }
 
-      // Atualizar status do usuário localmente
-      updateUser({ formulario_alimentar_preenchido: true });
-      
+      // Preparar os dados da resposta
+      const formData = {
+        userId: user.id,
+        formType: "alimentar",
+        purchaseId: activePurchase.id,
+        productId: mealItem.product_id,
+        responses: {
+          objetivo: values.objetivo,
+          peso: values.peso,
+          altura: values.altura,
+          restricoes: values.restricoes,
+          preferencias: values.preferencias,
+          alergias: values.alergias,
+          tempo_preparo: values.tempo_preparo,
+          refeicoes_por_dia: values.refeicoes_por_dia,
+          data_envio: new Date().toISOString()
+        }
+      };
+
+      // Enviar resposta usando o purchaseStore
+      const success = await submitFormResponse(formData);
+
+      if (!success) {
+        throw new Error("Falha ao enviar formulário. Tente novamente.");
+      }
+
       toast.success("Formulário alimentar enviado com sucesso!");
 
-      // Verificar se o formulário de treino já foi preenchido
-      const { data: usuario, error: userError } = await supabase
-        .from('usuarios')
-        .select('status')
-        .eq('id', user.id)
-        .single();
-
-      // Verificar se o outro formulário já foi preenchido
-      const { data: formTreino, error: treinoError } = await supabase
-        .from('formularios_treino')
-        .select('id')
-        .eq('id_usuario', user.id)
-        .single();
-
-      if (formTreino) {
-        navigate('/dashboard');
-      } else {
-        navigate('/formulario-treino');
-      }
+      // Redirecionar para o dashboard
+      navigate('/dashboard');
+      
     } catch (error) {
       console.error('Erro ao enviar formulário:', error);
       toast.error("Erro ao enviar formulário. Tente novamente.");

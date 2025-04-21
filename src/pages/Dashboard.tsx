@@ -1,368 +1,736 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { FileText, AlertCircle, CheckCircle, Apple, Dumbbell, Clock, Download, ClipboardList } from "lucide-react";
-import { useAuthStore } from '@/stores/authStore';
-import { usePlanStore, PlanStatus } from '@/stores/planStore';
+import { motion } from 'framer-motion';
+import { useAuthStore } from '../stores/authStore';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { supabase } from '../integrations/supabase/client';
+import { 
+  FormStatus, 
+  PlanStatus, 
+  PurchaseStatus, 
+  ProductType 
+} from '../integrations/supabase/types';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import { IconActivity, IconList, IconClock, IconAlertCircle, IconClipboardCheck, IconHourglass } from '../components/ui/icons';
+import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
-import { supabase } from "@/integrations/supabase/client";
+import { useToast } from '@/hooks/use-toast';
+import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { Progress } from '@/components/ui/progress';
+import { AlertCircle, Check, Info, Package, ShoppingCart, FileText, FileCheck2, FileX2, CalendarClock } from "lucide-react";
 
-const Dashboard = () => {
+enum ActiveTab {
+  Meal = 'meal',
+  Workout = 'workout',
+}
+
+interface UserStats {
+  user_id: string;
+  total_purchases: number;
+  completed_forms: number;
+  pending_forms: number;
+  ready_plans: number;
+  active_plans: number;
+  awaiting_plans: number;
+}
+
+interface PurchaseItem {
+  purchase_id: string;
+  user_id: string;
+  user_email: string;
+  kiwify_id: string;
+  purchase_status: PurchaseStatus;
+  purchase_date: string | null;
+  item_id: string;
+  product_id: string;
+  product_name: string;
+  product_type: ProductType;
+  form_status: FormStatus;
+  plan_status: PlanStatus;
+  has_form_response: boolean;
+  item_created_at: string;
+}
+
+interface MealPlan {
+  id: string;
+  title: string;
+  description: string | null;
+  meals: any | null;
+  created_at: string;
+  user_id: string;
+}
+
+interface WorkoutPlan {
+  id: string;
+  title: string;
+  description: string | null;
+  days: any | null;
+  created_at: string;
+  user_id: string;
+}
+
+interface FormStatus {
+  alimentar_completed: boolean;
+  treino_completed: boolean;
+}
+
+interface UserPurchaseStatus {
+  user_id: string;
+  total_purchases: number;
+  completed_forms: number;
+  pending_forms: number;
+  ready_plans: number;
+  active_plans: number;
+  awaiting_plans: number;
+}
+
+const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, updateUser } = useAuthStore((state) => ({ 
-    user: state.user, 
-    isAuthenticated: state.isAuthenticated,
-    updateUser: state.updateUser
-  }));
-  const { mealPlan, workoutPlan, planStatus, pdfUrl } = usePlanStore();
-  const [formStatus, setFormStatus] = useState({
-    alimentar: false,
-    treino: false,
-    bothCompleted: false
-  });
+  const { user, isAuthenticated, updateUser } = useAuthStore();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.Meal);
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
+  const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formStatus, setFormStatus] = useState<FormStatus>({ alimentar_completed: false, treino_completed: false });
+  const [planos, setPlanos] = useState<any[]>([]);
+  const [purchaseStatus, setPurchaseStatus] = useState<UserPurchaseStatus | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
-    } else {
-      fetchFormStatus();
+      return;
     }
-  }, [isAuthenticated, navigate]);
 
-  const fetchFormStatus = async () => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchPurchaseItems(),
+        fetchUserStats(),
+        fetchPlans(),
+        fetchFormStatus(),
+        fetchPurchaseStatus()
+      ]);
+      setLoading(false);
+    };
+
+    fetchUserData();
+  }, [isAuthenticated, user?.id]);
+
+  const fetchUserStats = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase.rpc(
+        'get_user_purchase_status',
+        { user_id: user.id }
+      );
+
+      if (error) {
+        console.error('Erro ao buscar estatísticas do usuário:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setStats(data[0]);
+      }
+    } catch (error) {
+      console.error('Erro ao processar estatísticas do usuário:', error);
+    }
+  };
+
+  const fetchPurchaseItems = async () => {
     if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('formulario_alimentar_preenchido, formulario_treino_preenchido, plano_status')
-        .eq('id', user.id)
-        .single();
+        .from('v_purchase_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('purchase_status', 'approved');
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Erro ao buscar compras:', error);
         return;
       }
 
-      if (data) {
-        // Update the local state
-        setFormStatus({
-          alimentar: data.formulario_alimentar_preenchido || false,
-          treino: data.formulario_treino_preenchido || false,
-          bothCompleted: (data.formulario_alimentar_preenchido && data.formulario_treino_preenchido) || false
-        });
-
-        // Update the user state in the auth store
-        updateUser({
-          formulario_alimentar_preenchido: data.formulario_alimentar_preenchido,
-          formulario_treino_preenchido: data.formulario_treino_preenchido,
-          plano_status: data.plano_status
-        });
-
-        // If status has changed from "aguardando", update the local state
-        if (data.plano_status && data.plano_status !== 'aguardando' && planStatus === 'awaiting') {
-          const newStatus: PlanStatus = data.plano_status === 'processando' ? 'processing' : 
-                                      data.plano_status === 'pronto' ? 'ready' : 'awaiting';
-          // Consider updating planStore status here
-        }
-      }
+      setPurchaseItems(data || []);
     } catch (error) {
-      console.error('Erro ao buscar status dos formulários:', error);
+      console.error('Erro ao processar compras:', error);
     }
   };
 
+  const fetchPlans = async () => {
+    if (!user?.id) return;
+
+    try {
+      // Buscar planos alimentares
+      const { data: mealData, error: mealError } = await supabase
+        .from('meal_plans')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (mealError) {
+        console.error('Erro ao buscar planos alimentares:', mealError);
+      } else {
+        setMealPlans(mealData || []);
+      }
+
+      // Buscar planos de treino
+      const { data: workoutData, error: workoutError } = await supabase
+        .from('workout_plans')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (workoutError) {
+        console.error('Erro ao buscar planos de treino:', workoutError);
+      } else {
+        setWorkoutPlans(workoutData || []);
+      }
+    } catch (error) {
+      console.error('Erro ao processar planos:', error);
+    }
+  };
+
+  const fetchFormStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_status')
+        .select('alimentar_completed, treino_completed')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormStatus(data);
+        // Atualiza o status do usuário na store
+        updateUser({
+          ...user,
+          alimentar_completed: data.alimentar_completed,
+          treino_completed: data.treino_completed
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status dos formulários:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPurchaseStatus = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_purchase_status', { 
+          p_user_id: user.id 
+        });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setPurchaseStatus(data[0]);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar status de compras:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o status das suas compras",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const hasMealProduct = () => {
+    return purchaseItems.some(item => 
+      item.product_type === 'meal' || item.product_type === 'combo'
+    );
+  };
+
+  const hasWorkoutProduct = () => {
+    return purchaseItems.some(item => 
+      item.product_type === 'workout' || item.product_type === 'combo'
+    );
+  };
+
+  const getFormularioLink = (item: PurchaseItem) => {
+    if (item.product_type === 'meal') {
+      return `/formulario-alimentar/${item.purchase_id}/${item.product_id}`;
+    } else if (item.product_type === 'workout') {
+      return `/formulario-treino/${item.purchase_id}/${item.product_id}`;
+    } else if (item.product_type === 'combo') {
+      // Para produtos do tipo combo, verificamos se já existe resposta
+      if (item.form_status === 'pending') {
+        return `/formulario-alimentar/${item.purchase_id}/${item.product_id}`;
+      }
+    }
+    return null;
+  };
+
+  const renderPendingFormsList = () => {
+    const pendingItems = purchaseItems.filter(item => item.form_status === 'pending');
+    
+    if (pendingItems.length === 0) return null;
+    
+    return (
+      <div className="mt-2">
+        <ul className="space-y-2">
+          {pendingItems.map(item => {
+            const formLink = getFormularioLink(item);
+            return formLink ? (
+              <li key={item.item_id} className="text-sm">
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto font-normal"
+                  onClick={() => navigate(formLink)}
+                >
+                  {item.product_name}
+                </Button>
+              </li>
+            ) : null;
+          })}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderStatusCards = () => {
+    if (!stats) return null;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Formulários Preenchidos
+            </CardTitle>
+            <IconClipboardCheck className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.completed_forms}</div>
+            <p className="text-xs text-muted-foreground">
+              de {stats.completed_forms + stats.pending_forms} formulários
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Formulários Pendentes
+            </CardTitle>
+            <IconHourglass className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pending_forms}</div>
+            <p className="text-xs text-muted-foreground">
+              precisam ser preenchidos
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Planos Prontos
+            </CardTitle>
+            <IconClipboardCheck className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.ready_plans}</div>
+            <p className="text-xs text-muted-foreground">
+              de {stats.ready_plans + stats.awaiting_plans} planos
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderFormStatus = () => {
-    if (formStatus.bothCompleted) {
+    if (loading) return null;
+
+    const allCompleted = formStatus.alimentar_completed && formStatus.treino_completed;
+    const noneCompleted = !formStatus.alimentar_completed && !formStatus.treino_completed;
+    const someCompleted = !noneCompleted && !allCompleted;
+
+    if (allCompleted) {
       return (
-        <Alert className="bg-mint-light border-mint">
-          <CheckCircle className="h-5 w-5 text-mint-dark" />
-          <AlertTitle>Formulários recebidos!</AlertTitle>
+        <Alert className="mb-4 border-green-500 bg-green-50">
+          <Check className="h-5 w-5 text-green-600" />
+          <AlertTitle className="text-green-600">Formulários completos!</AlertTitle>
           <AlertDescription>
-            Seu plano será entregue em até 4 dias via WhatsApp.
+            Você já preencheu todos os formulários necessários. Agora é só aguardar a criação dos seus planos.
           </AlertDescription>
         </Alert>
       );
     }
 
-    return (
-      <Alert className="bg-lavender-light border-lavender">
-        <AlertCircle className="h-5 w-5 text-lavender-dark" />
-        <AlertTitle>Preencha os formulários de planejamento</AlertTitle>
-        <AlertDescription>
-          Para criar seu plano personalizado, precisamos que você preencha os formulários abaixo:
-        </AlertDescription>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-          <Button 
-            variant="outline" 
-            className={`flex items-center gap-2 ${formStatus.alimentar ? 'bg-green-50 border-green-200' : 'bg-white'}`}
-            disabled={formStatus.alimentar}
-            onClick={() => navigate('/formulario-alimentar')}
-          >
-            {formStatus.alimentar ? (
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            ) : (
-              <Apple className="h-4 w-4 text-lavender-dark" />
-            )}
-            Formulário Alimentar
-            {formStatus.alimentar && <span className="text-xs text-green-500 ml-1">(Concluído)</span>}
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className={`flex items-center gap-2 ${formStatus.treino ? 'bg-green-50 border-green-200' : 'bg-white'}`}
-            disabled={formStatus.treino}
-            onClick={() => navigate('/formulario-treino')}
-          >
-            {formStatus.treino ? (
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            ) : (
-              <Dumbbell className="h-4 w-4 text-mint-dark" />
-            )}
-            Formulário de Treino
-            {formStatus.treino && <span className="text-xs text-green-500 ml-1">(Concluído)</span>}
-          </Button>
-        </div>
-      </Alert>
-    );
-  };
-
-  const renderStatusMessage = () => {
-    if (formStatus.bothCompleted) {
-      return null; // Already showing the completion message in renderFormStatus
-    }
-
-    switch (planStatus) {
-      case 'processing':
-        return (
-          <Alert className="bg-mint-light border-mint">
-            <Clock className="h-5 w-5 text-mint-dark" />
-            <AlertTitle>Seu plano está sendo elaborado</AlertTitle>
-            <AlertDescription>
-              Estamos criando seu plano personalizado. Aguarde, isso pode levar alguns minutos.
-            </AlertDescription>
-          </Alert>
-        );
-      case 'ready':
-        return (
-          <Alert className="bg-mint-light border-mint">
-            <CheckCircle className="h-5 w-5 text-mint-dark" />
-            <AlertTitle>Seu plano está pronto!</AlertTitle>
-            <AlertDescription>
-              Seu plano personalizado já está disponível. Confira abaixo.
-            </AlertDescription>
-            {pdfUrl && (
-              <div className="mt-4">
-                <Button variant="outline" className="bg-white hover:bg-mint-light border-mint text-mint-dark" asChild>
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-4 w-4" />
-                    Baixar PDF
-                  </a>
-                </Button>
+    if (someCompleted) {
+      return (
+        <Alert className="mb-4 border-amber-500 bg-amber-50">
+          <Info className="h-5 w-5 text-amber-600" />
+          <AlertTitle className="text-amber-600">Formulários parcialmente preenchidos</AlertTitle>
+          <AlertDescription>
+            Você já preencheu alguns formulários, mas ainda faltam alguns para completar seu perfil.
+            {!formStatus.alimentar_completed && (
+              <div className="mt-2">
+                <Link to="/formulario-alimentar">
+                  <Button variant="outline" size="sm" className="border-amber-600 text-amber-600 hover:bg-amber-100">
+                    Preencher formulário alimentar
+                  </Button>
+                </Link>
               </div>
             )}
-          </Alert>
-        );
-      default:
-        return null;
+            {!formStatus.treino_completed && (
+              <div className="mt-2">
+                <Link to="/formulario-treino">
+                  <Button variant="outline" size="sm" className="border-amber-600 text-amber-600 hover:bg-amber-100">
+                    Preencher formulário de treino
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      );
     }
+
+    if (noneCompleted) {
+      return (
+        <Alert className="mb-4">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle>Formulários pendentes</AlertTitle>
+          <AlertDescription>
+            Para que possamos criar seus planos personalizados, precisamos que você preencha os formulários.
+            <div className="flex gap-2 mt-2">
+              <Link to="/formulario-alimentar">
+                <Button variant="outline" size="sm">Formulário alimentar</Button>
+              </Link>
+              <Link to="/formulario-treino">
+                <Button variant="outline" size="sm">Formulário de treino</Button>
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    return null;
   };
 
-  return (
-    <div className="container py-8 space-y-8 animate-fade-in">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo{user?.name ? `, ${user.name}` : ''}! Confira seu plano personalizado.
-        </p>
-      </div>
+  const renderPurchaseStatus = () => {
+    if (!purchaseStatus) return null;
 
-      {renderFormStatus()}
-      {renderStatusMessage()}
-
-      {planStatus === 'ready' && (
-        <Tabs defaultValue="meal" className="w-full mt-8">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="meal">
-              <Apple className="mr-2 h-4 w-4" />
-              Plano Alimentar
-            </TabsTrigger>
-            <TabsTrigger value="workout">
-              <Dumbbell className="mr-2 h-4 w-4" />
-              Plano de Treino
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="meal" className="space-y-4 mt-4">
-            {mealPlan ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{mealPlan.title}</CardTitle>
-                  <CardDescription>{mealPlan.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mealPlan.meals.map((meal, index) => (
-                      <Card key={index} className="card-gradient">
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-center">
-                            <CardTitle className="text-lg">{meal.name}</CardTitle>
-                            <span className="text-sm text-muted-foreground">{meal.time}</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <ul className="space-y-2">
-                            {meal.foods.map((food, foodIndex) => (
-                              <li key={foodIndex} className="flex justify-between">
-                                <span>{food.name}</span>
-                                <span className="text-muted-foreground">{food.portion}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Plano Alimentar</CardTitle>
-                  <CardDescription>Aguardando criação do plano</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">O plano alimentar estará disponível em breve</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          <TabsContent value="workout" className="space-y-4 mt-4">
-            {workoutPlan ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{workoutPlan.title}</CardTitle>
-                  <CardDescription>{workoutPlan.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {workoutPlan.days.map((day, index) => (
-                      <Card key={index} className="card-gradient">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-lg">{day.day}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <ul className="space-y-4">
-                            {day.exercises.map((exercise, exIndex) => (
-                              <li key={exIndex} className="border-b pb-3 last:border-0 last:pb-0">
-                                <div className="font-medium">{exercise.name}</div>
-                                <div className="grid grid-cols-3 mt-1 text-sm">
-                                  <div>
-                                    <span className="text-muted-foreground">Séries: </span>
-                                    {exercise.sets}
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Reps: </span>
-                                    {exercise.reps}
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Descanso: </span>
-                                    {exercise.rest}
-                                  </div>
-                                </div>
-                                {exercise.notes && (
-                                  <div className="mt-1 text-sm text-muted-foreground">
-                                    {exercise.notes}
-                                  </div>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Plano de Treino</CardTitle>
-                  <CardDescription>Aguardando criação do plano</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">O plano de treino estará disponível em breve</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {!formStatus.bothCompleted && !(formStatus.alimentar && formStatus.treino) && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              O que preciso fazer?
+    const totalForms = purchaseStatus.completed_forms + purchaseStatus.pending_forms;
+    const formCompletionPercentage = totalForms > 0 
+      ? Math.round((purchaseStatus.completed_forms / totalForms) * 100) 
+      : 0;
+    
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Minhas Compras
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${formStatus.alimentar ? 'bg-green-100' : 'bg-lavender-light'}`}>
-                {formStatus.alimentar ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <span className="text-xs font-medium">1</span>
-                )}
+          <CardContent>
+            <div className="text-2xl font-bold">{purchaseStatus.total_purchases}</div>
+            <p className="text-xs text-muted-foreground">
+              Total de compras realizadas
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Formulários
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progresso</span>
+                <span>{formCompletionPercentage}%</span>
               </div>
-              <div>
-                <h3 className="font-medium">Preencher formulário alimentar</h3>
-                <p className="text-sm text-muted-foreground">
-                  Informações sobre sua alimentação, rotina e preferências.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${formStatus.treino ? 'bg-green-100' : 'bg-mint-light'}`}>
-                {formStatus.treino ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <span className="text-xs font-medium">2</span>
-                )}
-              </div>
-              <div>
-                <h3 className="font-medium">Preencher formulário de treino</h3>
-                <p className="text-sm text-muted-foreground">
-                  Informações sobre sua rotina de exercícios, objetivos e limitações.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-start gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100">
-                <span className="text-xs font-medium">3</span>
-              </div>
-              <div>
-                <h3 className="font-medium">Aguardar criação do seu plano</h3>
-                <p className="text-sm text-muted-foreground">
-                  Após preencher os formulários, nossa equipe criará seu plano personalizado.
-                </p>
+              <Progress value={formCompletionPercentage} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <div className="flex items-center gap-1">
+                  <FileCheck2 className="h-3 w-3 text-green-500" />
+                  <span>Completos: {purchaseStatus.completed_forms}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <FileX2 className="h-3 w-3 text-amber-500" />
+                  <span>Pendentes: {purchaseStatus.pending_forms}</span>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Planos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-lg font-semibold">{purchaseStatus.ready_plans}</div>
+                  <p className="text-xs text-muted-foreground">Prontos</p>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold">{purchaseStatus.active_plans}</div>
+                  <p className="text-xs text-muted-foreground">Ativos</p>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold">{purchaseStatus.awaiting_plans}</div>
+                  <p className="text-xs text-muted-foreground">Aguardando</p>
+                </div>
+              </div>
+              {purchaseStatus.awaiting_plans > 0 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <CalendarClock className="h-3 w-3" />
+                  <span>Aguardando preenchimento dos formulários</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderStatusMessage = () => {
+    if (loading) return null;
+
+    if (!planos || planos.length === 0) {
+      if (formStatus.alimentar_completed || formStatus.treino_completed) {
+        return (
+          <Alert className="mb-4 border-blue-500 bg-blue-50">
+            <Info className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-600">Seus planos estão sendo criados!</AlertTitle>
+            <AlertDescription>
+              Nossos especialistas já estão trabalhando na criação dos seus planos personalizados.
+              Em breve eles estarão disponíveis nesta página.
+            </AlertDescription>
+          </Alert>
+        );
+      }
+      return null;
+    }
+    return null;
+  };
+
+  const renderAvailablePlans = () => {
+    if (!purchaseItems || purchaseItems.length === 0) {
+      return (
+        <Alert>
+          <IconAlertCircle />
+          <AlertTitle>Sem planos disponíveis</AlertTitle>
+          <AlertDescription>
+            Você ainda não possui nenhum plano disponível.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    const mealProducts = purchaseItems.filter(item => 
+      (item.product_type === 'meal' || item.product_type === 'combo') &&
+      item.plan_status !== 'awaiting'
+    ).length > 0;
+    
+    const workoutProducts = purchaseItems.filter(item => 
+      (item.product_type === 'workout' || item.product_type === 'combo') &&
+      item.plan_status !== 'awaiting'
+    ).length > 0;
+
+    if (activeTab === ActiveTab.Meal && !mealProducts) {
+      return (
+        <Alert>
+          <IconClock />
+          <AlertTitle>Plano alimentar em desenvolvimento</AlertTitle>
+          <AlertDescription>
+            Seu plano alimentar está sendo desenvolvido por nossos especialistas e estará disponível em breve.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (activeTab === ActiveTab.Workout && !workoutProducts) {
+      return (
+        <Alert>
+          <IconClock />
+          <AlertTitle>Plano de treino em desenvolvimento</AlertTitle>
+          <AlertDescription>
+            Seu plano de treino está sendo desenvolvido por nossos especialistas e estará disponível em breve.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (activeTab === ActiveTab.Meal && mealPlans.length === 0) {
+      return (
+        <Alert>
+          <IconClock />
+          <AlertTitle>Sem planos alimentares disponíveis</AlertTitle>
+          <AlertDescription>
+            Você ainda não possui planos alimentares prontos. Certifique-se de preencher todos os formulários necessários.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (activeTab === ActiveTab.Workout && workoutPlans.length === 0) {
+      return (
+        <Alert>
+          <IconClock />
+          <AlertTitle>Sem planos de treino disponíveis</AlertTitle>
+          <AlertDescription>
+            Você ainda não possui planos de treino prontos. Certifique-se de preencher todos os formulários necessários.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (activeTab === ActiveTab.Meal) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {mealPlans.map((plan) => (
+            <Card key={plan.id}>
+              <CardHeader>
+                <CardTitle>{plan.title || 'Plano Alimentar'}</CardTitle>
+                <CardDescription>
+                  {plan.description || 'Plano alimentar personalizado'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">
+                  {plan.meals && Array.isArray(plan.meals) ? plan.meals.length : 0} refeições planejadas
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={() => navigate(`/plano-detalhes/${plan.id}`)}>
+                  Ver plano completo
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {workoutPlans.map((plan) => (
+          <Card key={plan.id}>
+            <CardHeader>
+              <CardTitle>{plan.title || 'Plano de Treino'}</CardTitle>
+              <CardDescription>
+                {plan.description || 'Plano de treino personalizado'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">
+                {plan.days && Array.isArray(plan.days) ? plan.days.length : 0} dias de treino planejados
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => navigate(`/plano-detalhes/${plan.id}`)}>
+                Ver plano completo
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen flex flex-col"
+    >
+      <Navbar />
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-2">
+            Olá, {user?.nome || 'Cliente'}!
+          </h1>
+          <p className="text-gray-600">
+            Bem-vindo(a) ao seu painel personalizado.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <>
+            {renderPurchaseStatus()}
+            {renderFormStatus()}
+            {renderStatusMessage()}
+
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-4">Seus planos personalizados</h2>
+              
+              <Tabs 
+                defaultValue={activeTab} 
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as ActiveTab)}
+              >
+                <TabsList className="mb-4">
+                  <TabsTrigger value={ActiveTab.Meal} disabled={!hasMealProduct()}>
+                    <IconList className="mr-2" />
+                    Plano Alimentar
+                  </TabsTrigger>
+                  <TabsTrigger value={ActiveTab.Workout} disabled={!hasWorkoutProduct()}>
+                    <IconActivity className="mr-2" />
+                    Plano de Treino
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value={ActiveTab.Meal}>
+                  {renderAvailablePlans()}
+                </TabsContent>
+                
+                <TabsContent value={ActiveTab.Workout}>
+                  {renderAvailablePlans()}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </>
+        )}
+      </main>
+      <Footer />
+    </motion.div>
   );
 };
 
