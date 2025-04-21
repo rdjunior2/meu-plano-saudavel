@@ -4,8 +4,9 @@ import { User } from '../types/user'
 
 const COOKIE_OPTIONS = {
   secure: import.meta.env.PROD, // Secure em produção
-  sameSite: 'strict' as const,
-  expires: 7 // 7 dias
+  sameSite: import.meta.env.PROD ? 'none' as const : 'lax' as const, // Alterar para 'none' em produção
+  expires: 7, // 7 dias
+  domain: import.meta.env.PROD ? window.location.hostname.split('.').slice(-2).join('.') : undefined // Define o domínio em produção
 }
 
 /**
@@ -15,6 +16,7 @@ const COOKIE_OPTIONS = {
 const setAuthCookies = (session: any) => {
   if (!session) return
   
+  console.log('Configurando cookies de autenticação', { domain: COOKIE_OPTIONS.domain, sameSite: COOKIE_OPTIONS.sameSite });
   Cookies.set('access_token', session.access_token, COOKIE_OPTIONS)
   Cookies.set('refresh_token', session.refresh_token, COOKIE_OPTIONS)
 }
@@ -23,8 +25,9 @@ const setAuthCookies = (session: any) => {
  * Remove cookies de autenticação no logout
  */
 const clearAuthCookies = () => {
-  Cookies.remove('access_token')
-  Cookies.remove('refresh_token')
+  console.log('Removendo cookies de autenticação');
+  Cookies.remove('access_token', { domain: COOKIE_OPTIONS.domain })
+  Cookies.remove('refresh_token', { domain: COOKIE_OPTIONS.domain })
 }
 
 /**
@@ -33,6 +36,7 @@ const clearAuthCookies = () => {
  */
 export const checkSession = async () => {
   try {
+    console.log('Verificando sessão atual');
     const { data, error } = await supabase.auth.getSession()
     
     if (error) {
@@ -41,9 +45,11 @@ export const checkSession = async () => {
     }
     
     if (!data.session) {
+      console.log('Nenhuma sessão encontrada');
       return null
     }
     
+    console.log('Sessão ativa encontrada, atualizando cookies');
     setAuthCookies(data.session)
     return data.session
   } catch (error) {
@@ -57,6 +63,7 @@ export const checkSession = async () => {
  */
 export const loginWithEmail = async (email: string, password: string) => {
   try {
+    console.log('Tentando login com:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -64,17 +71,21 @@ export const loginWithEmail = async (email: string, password: string) => {
     
     if (error) {
       console.error('Erro ao fazer login:', error)
-      return { success: false, error: 'Email ou senha incorretos.' }
+      return { success: false, error: error.message || 'Email ou senha incorretos.' }
     }
     
+    console.log('Login bem-sucedido, configurando cookies');
     setAuthCookies(data.session)
     
+    console.log('Buscando perfil do usuário:', data.user.id);
     const profile = await getUserProfile(data.user.id)
     
     if (!profile) {
+      console.error('Perfil não encontrado para o usuário:', data.user.id);
       return { success: false, error: 'Erro ao buscar dados do perfil.' }
     }
     
+    console.log('Perfil encontrado:', profile);
     return { 
       success: true, 
       user: profile, 

@@ -39,37 +39,50 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('[AuthWrapper] Inicializando autenticação, caminho atual:', location.pathname);
         const session = await checkSession();
         
         if (session) {
+          console.log('[AuthWrapper] Sessão encontrada, buscando perfil do usuário', { 
+            userId: session.user.id,
+            expiresAt: new Date(session.expires_at * 1000).toISOString()
+          });
+          
           // Sessão existente, buscar perfil do usuário
           const user = await getUserProfile(session.user.id);
           
           if (user) {
+            console.log('[AuthWrapper] Perfil encontrado, realizando login automático');
             login(user, session.access_token);
           } else {
             // Não conseguiu buscar o perfil, fazer logout
+            console.warn('[AuthWrapper] Perfil não encontrado, realizando logout');
             await logout();
             setIsAuthenticated(false);
             if (!isPublicRoute(location.pathname)) {
+              console.log('[AuthWrapper] Redirecionando para /login (perfil não encontrado)');
               navigate('/login');
             }
           }
         } else {
           // Sem sessão, redirecionar se estiver em rota protegida
+          console.log('[AuthWrapper] Nenhuma sessão encontrada');
           setIsAuthenticated(false);
           if (!isPublicRoute(location.pathname)) {
+            console.log('[AuthWrapper] Redirecionando para /login (sem sessão)');
             navigate('/login');
           }
         }
       } catch (error) {
-        console.error('Erro ao inicializar autenticação:', error);
+        console.error('[AuthWrapper] Erro ao inicializar autenticação:', error);
         await logout();
         setIsAuthenticated(false);
         if (!isPublicRoute(location.pathname)) {
+          console.log('[AuthWrapper] Redirecionando para /login (erro de autenticação)');
           navigate('/login');
         }
       } finally {
+        console.log('[AuthWrapper] Inicialização de autenticação concluída');
         setIsLoading(false);
       }
     };

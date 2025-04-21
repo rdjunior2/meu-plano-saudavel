@@ -11,7 +11,20 @@ let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 // Criação do cliente Supabase com tipagem
 export const supabase = (() => {
   if (!supabaseInstance) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        storage: localStorage,
+        storageKey: 'meu-plano-saude-auth-storage'
+      }
+    });
+    
+    // Log de inicialização para depuração
+    console.log('Cliente Supabase inicializado', { 
+      url: supabaseUrl.substring(0, 20) + '...',
+      usingLocalStorage: true
+    });
   }
   return supabaseInstance;
 })(); 

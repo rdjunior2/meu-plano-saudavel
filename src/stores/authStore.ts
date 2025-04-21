@@ -10,23 +10,42 @@ import {
   checkPhoneExists
 } from '../services/auth';
 
-// Armazenamento seguro baseado em cookies
+// Configuração de cookies consistente com auth.ts
+const COOKIE_OPTIONS = {
+  secure: import.meta.env.PROD, // Secure em produção
+  sameSite: import.meta.env.PROD ? 'none' as const : 'lax' as const, // Alterar para 'none' em produção
+  expires: 7, // 7 dias
+  domain: import.meta.env.PROD ? window.location.hostname.split('.').slice(-2).join('.') : undefined // Define o domínio em produção
+};
+
+// Armazenamento seguro baseado em localStorage (em vez de cookies)
 const secureStorage = {
   getItem: () => {
-    const userStr = Cookies.get('user_data');
-    return userStr ? Promise.resolve(userStr) : Promise.resolve(null);
+    try {
+      const userStr = localStorage.getItem('user_data');
+      return userStr ? Promise.resolve(userStr) : Promise.resolve(null);
+    } catch (error) {
+      console.error('Erro ao ler dados do usuário:', error);
+      return Promise.resolve(null);
+    }
   },
   setItem: (_name: string, value: string) => {
-    Cookies.set('user_data', value, { 
-      expires: 7, // 7 dias
-      secure: import.meta.env.PROD,
-      sameSite: 'strict'
-    });
-    return Promise.resolve();
+    try {
+      localStorage.setItem('user_data', value);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Erro ao salvar dados do usuário:', error);
+      return Promise.resolve();
+    }
   },
   removeItem: () => {
-    Cookies.remove('user_data');
-    return Promise.resolve();
+    try {
+      localStorage.removeItem('user_data');
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Erro ao remover dados do usuário:', error);
+      return Promise.resolve();
+    }
   }
 };
 

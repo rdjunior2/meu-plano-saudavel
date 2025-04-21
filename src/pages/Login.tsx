@@ -38,20 +38,31 @@ const Login = () => {
     try {
       setIsLoading(true);
       
+      console.log('[Login] Tentando fazer login com email:', values.email);
+      
       // Tentar fazer login com email
-      const { success, error } = await loginWithEmail(values.email, values.password);
+      const { success, error, user } = await loginWithEmail(values.email, values.password);
       
       if (!success) {
+        console.error('[Login] Falha no login:', error);
         toast.error(error || "Erro ao realizar login. Verifique seus dados.");
+        
+        // Exibir informações adicionais para depuração
+        if (import.meta.env.DEV) {
+          console.debug('[Login] Detalhes do erro:', { error });
+        }
+        
         return;
       }
       
+      console.log('[Login] Login realizado com sucesso, redirecionando para /dashboard');
       toast.success("Login realizado com sucesso!");
       navigate("/dashboard");
       
     } catch (error: any) {
-      toast.error("Erro ao realizar login. Tente novamente.");
-      console.error("Erro no login:", error);
+      console.error('[Login] Erro não tratado durante o login:', error);
+      const errorMessage = error?.message || "Erro ao realizar login. Tente novamente.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
