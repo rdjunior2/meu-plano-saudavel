@@ -4,7 +4,7 @@ import type { Database } from '../integrations/supabase/types'
 // Carregando as variáveis de ambiente com valores padrão
 // Usando a ANON_KEY válida mais recente configurada no Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ykepyxcjsnvesbkuxgmv.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZXB5eGNqc252ZXNia3V4Z212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxNDI0NjMsImV4cCI6MjA1OTcxODQ2M30.jYLSz1tgS5kuZETCoI0tChc-tvBo30vh0tGKqcjBxBQ'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZXB5eGNqc252ZXNia3V4Z212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NTAxNDQsImV4cCI6MjA2MDMyNjE0NH0.zAHo1XNQBmvyxhmlxD3BjNRiCrQt8cIzoYI6F5iLbLc'
 
 // Verifica a validade do JWT durante desenvolvimento
 if (import.meta.env.DEV) {
