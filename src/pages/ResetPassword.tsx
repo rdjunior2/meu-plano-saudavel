@@ -59,6 +59,7 @@ export default function ResetPassword() {
   const [isSessionSet, setIsSessionSet] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isRequestingNewLink, setIsRequestingNewLink] = useState<boolean>(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   
   const form = useForm<ResetPasswordForm>({
     resolver: zodResolver(resetPasswordSchema),
@@ -72,77 +73,164 @@ export default function ResetPassword() {
   useEffect(() => {
     const setupUserSession = async () => {
       try {
-        // Verificar tanto o hash (#) quanto os parâmetros de consulta (?) da URL
-        // O Supabase pode enviar os tokens em diferentes partes da URL dependendo da configuração
-        let params;
+        console.log('[ResetPassword] Iniciando verificação de tokens na URL');
+        console.log('[ResetPassword] URL completa:', window.location.href);
         
-        // Verifica primeiro o hash (formato tradicional)
+        // Estratégia 1: Verificar se já existe uma sessão ativa
+        const { data: existingSession } = await supabase.auth.getSession();
+        if (existingSession.session) {
+          console.log('[ResetPassword] Sessão existente encontrada');
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          
+          if (!userError && userData.user) {
+            console.log('[ResetPassword] Usuário já autenticado:', userData.user.email);
+            setUserEmail(userData.user.email);
+            setIsSessionSet(true);
+            return;
+          }
+        }
+        
+        // Estratégia 2: Tentar obter tokens de diferentes partes da URL
+        console.log('[ResetPassword] Verificando tokens na URL');
+        
+        // Verificar tanto o hash (#) quanto os parâmetros de consulta (?) da URL
+        let accessToken = null;
+        let refreshToken = null;
+        let type = null;
+        let tokensSource = 'nenhum';
+        
+        // 2.1 Verificar no hash (formato #access_token=...)
         const hash = window.location.hash.substring(1);
         if (hash) {
-          console.log('[ResetPassword] Parâmetros detectados no hash da URL');
-          params = new URLSearchParams(hash);
-        } 
-        // Depois verifica a string de consulta (formato alternativo)
-        else if (window.location.search) {
-          console.log('[ResetPassword] Parâmetros detectados na query string da URL');
-          params = new URLSearchParams(window.location.search.substring(1));
-        }
-        // Se não encontrou em nenhum lugar, cria um objeto vazio
-        else {
-          console.log('[ResetPassword] Nenhum parâmetro detectado na URL');
-          params = new URLSearchParams();
+          console.log('[ResetPassword] Verificando tokens no hash da URL');
+          const hashParams = new URLSearchParams(hash);
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+          type = hashParams.get('type');
+          
+          if (accessToken && refreshToken) {
+            tokensSource = 'hash';
+            console.log('[ResetPassword] Tokens encontrados no hash da URL');
+          }
         }
         
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
+        // 2.2 Verificar na query string (formato ?access_token=...)
+        if (!accessToken || !refreshToken) {
+          console.log('[ResetPassword] Verificando tokens na query string');
+          const queryParams = new URLSearchParams(window.location.search);
+          accessToken = queryParams.get('access_token');
+          refreshToken = queryParams.get('refresh_token');
+          type = queryParams.get('type');
+          
+          if (accessToken && refreshToken) {
+            tokensSource = 'query';
+            console.log('[ResetPassword] Tokens encontrados na query string');
+          }
+        }
         
-        console.log('[ResetPassword] Parâmetros detectados:', { 
+        // 2.3 Verificar token do Supabase no formato especial de URLs de recuperação
+        // O Supabase às vezes usa um formato tipo: /reset-password#token=eyJhbGc...
+        if (!accessToken && hash && hash.startsWith('token=')) {
+          console.log('[ResetPassword] Verificando token especial do Supabase');
+          const token = hash.substring(6); // Remove 'token='
+          
+          if (token) {
+            // Alguns fluxos do Supabase usam apenas um token para recuperação
+            tokensSource = 'token_especial';
+            console.log('[ResetPassword] Token especial encontrado');
+            
+            // Tentar definir a sessão usando apenas o token
+            const { data, error } = await supabase.auth.verifyOtp({
+              token_hash: token,
+              type: 'recovery',
+            });
+            
+            if (!error && data.session) {
+              console.log('[ResetPassword] Sessão verificada com token especial');
+              setUserEmail(data.user?.email || null);
+              setIsSessionSet(true);
+              return;
+            } else {
+              console.error('[ResetPassword] Erro ao verificar token especial:', error);
+            }
+          }
+        }
+        
+        // 2.4 Verificar no localStorage como último recurso
+        if (!accessToken || !refreshToken) {
+          console.log('[ResetPassword] Verificando tokens no localStorage');
+          const storedSession = localStorage.getItem('meu-plano-saude-auth-storage');
+          
+          if (storedSession) {
+            try {
+              const sessionData = JSON.parse(storedSession);
+              if (sessionData?.session?.access_token && sessionData?.session?.refresh_token) {
+                accessToken = sessionData.session.access_token;
+                refreshToken = sessionData.session.refresh_token;
+                tokensSource = 'localStorage';
+                console.log('[ResetPassword] Tokens encontrados no localStorage');
+              }
+            } catch (e) {
+              console.error('[ResetPassword] Erro ao parsear sessão do localStorage:', e);
+            }
+          }
+        }
+
+        // Informações para depuração
+        const debug = {
+          tokensSource,
           hasAccessToken: !!accessToken,
           hasRefreshToken: !!refreshToken,
-          type
-        });
+          type,
+          url: window.location.href,
+          urlOrigin: window.location.origin
+        };
         
-        // Validar se temos tokens e o tipo é 'recovery'
-        if (!accessToken || !refreshToken || type !== 'recovery') {
-          console.error('[ResetPassword] Tokens inválidos ou ausentes:', { 
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken,
-            type
+        console.log('[ResetPassword] Informações de depuração:', debug);
+        setDebugInfo(JSON.stringify(debug, null, 2));
+        
+        // Tentar configurar a sessão se tokens foram encontrados
+        if (accessToken && refreshToken) {
+          console.log('[ResetPassword] Tentando configurar sessão com os tokens encontrados');
+          
+          // Configurar a sessão com os tokens recebidos
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
           });
-          setInvalidLink(true);
-          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          
+          if (sessionError) {
+            console.error('[ResetPassword] Erro ao configurar sessão:', sessionError);
+            setInvalidLink(true);
+            setError(`Erro ao validar tokens: ${sessionError.message}`);
+            return;
+          }
+          
+          console.log('[ResetPassword] Sessão configurada com sucesso');
+          
+          // Verificar se o usuário está autenticado
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          
+          if (userError || !userData.user) {
+            console.error('[ResetPassword] Erro ao obter usuário:', userError);
+            setInvalidLink(true);
+            setError('Não foi possível validar sua identidade. Solicite um novo link.');
+            return;
+          }
+          
+          console.log('[ResetPassword] Usuário autenticado:', userData.user.email);
+          setUserEmail(userData.user.email);
+          setIsSessionSet(true);
           return;
         }
         
-        // Configurar a sessão com os tokens recebidos
-        const { data, error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
+        // Estratégia 3: Último recurso - tentar recuperar a sessão através do verifyOtp
+        // Isso é necessário para links que não contêm tokens explícitos
+        console.log('[ResetPassword] Tentando verificar se há um fluxo de OTP ativo');
         
-        if (sessionError) {
-          console.error('[ResetPassword] Erro ao configurar sessão:', sessionError);
-          setInvalidLink(true);
-          setError(`Erro ao validar tokens: ${sessionError.message}`);
-          return;
-        }
-        
-        console.log('[ResetPassword] Sessão configurada com sucesso');
-        
-        // Verificar se o usuário está autenticado
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !userData.user) {
-          console.error('[ResetPassword] Erro ao obter usuário:', userError);
-          setInvalidLink(true);
-          setError('Não foi possível validar sua identidade. Solicite um novo link.');
-          return;
-        }
-        
-        console.log('[ResetPassword] Usuário autenticado:', userData.user.email);
-        setUserEmail(userData.user.email);
-        setIsSessionSet(true);
+        // Se todas as tentativas anteriores falharam, exibir o erro
+        setInvalidLink(true);
+        setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
       } catch (err) {
         console.error('[ResetPassword] Erro ao processar parâmetros:', err);
         setInvalidLink(true);
@@ -168,15 +256,19 @@ export default function ResetPassword() {
     setError(null);
     
     try {
+      console.log('[ResetPassword] Tentando atualizar senha');
+      
       // Atualizar a senha do usuário
       const { error } = await supabase.auth.updateUser({
         password: data.password
       });
       
       if (error) {
+        console.error('[ResetPassword] Erro ao atualizar senha:', error);
         throw new Error(error.message);
       }
       
+      console.log('[ResetPassword] Senha atualizada com sucesso');
       setSuccess(true);
       
       // Limpar o hash da URL por segurança
@@ -197,9 +289,24 @@ export default function ResetPassword() {
   
   // Função para solicitar um novo link de redefinição
   const requestNewPasswordResetLink = async () => {
-    if (!userEmail) {
-      toast.error("Email não encontrado. Por favor, retorne à página de login.");
-      return;
+    let emailToUse = userEmail;
+    
+    if (!emailToUse) {
+      // Se não temos o email do usuário, solicitar que ele informe
+      const inputEmail = prompt("Por favor, digite seu email para receber um novo link de recuperação:");
+      if (!inputEmail) {
+        toast.error("É necessário informar um email para receber o link de recuperação.");
+        return;
+      }
+      
+      // Validar o email informado
+      const emailResult = z.string().email().safeParse(inputEmail);
+      if (!emailResult.success) {
+        toast.error("Por favor, digite um email válido.");
+        return;
+      }
+      
+      emailToUse = inputEmail;
     }
     
     setIsRequestingNewLink(true);
@@ -210,20 +317,52 @@ export default function ResetPassword() {
       const redirectUrl = `${origin}/reset-password`;
       
       console.log('[ResetPassword] Solicitando novo link:', { 
-        email: userEmail,
+        email: emailToUse,
         redirectUrl
       });
       
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: redirectUrl,
-      });
+      // Adicionar verificação do site URL no Supabase
+      const siteUrlsToTry = [
+        redirectUrl,
+        origin,
+        'https://meu-plano-saudavel.vercel.app/reset-password',
+        'http://localhost:3000/reset-password'
+      ];
       
-      if (error) {
-        throw new Error(error.message);
+      let requestError = null;
+      
+      // Tentar todas as URLs de redirecionamento possíveis até uma funcionar
+      for (const redirectTo of siteUrlsToTry) {
+        try {
+          console.log(`[ResetPassword] Tentando com redirectTo: ${redirectTo}`);
+          
+          const { error } = await supabase.auth.resetPasswordForEmail(emailToUse, {
+            redirectTo,
+          });
+          
+          if (!error) {
+            // Se a requisição foi bem-sucedida, sair do loop
+            requestError = null;
+            break;
+          } else {
+            requestError = error;
+            console.warn(`[ResetPassword] Falha com redirectTo ${redirectTo}:`, error);
+          }
+        } catch (err) {
+          requestError = err;
+          console.warn(`[ResetPassword] Exceção com redirectTo ${redirectTo}:`, err);
+        }
       }
       
+      // Verificar se todas as tentativas falharam
+      if (requestError) {
+        console.error('[ResetPassword] Todas as tentativas de envio falharam:', requestError);
+        throw requestError;
+      }
+      
+      // Se chegamos aqui, significa que pelo menos uma das tentativas funcionou
       toast.success(
-        "Novo email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
+        "Email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
         { duration: 6000 }
       );
       
@@ -312,17 +451,15 @@ export default function ResetPassword() {
               <AlertDescription>
                 O link de recuperação de senha é inválido ou expirou. 
                 <div className="mt-2 flex flex-col gap-2">
-                  {userEmail && (
-                    <Button 
-                      variant="outline" 
-                      onClick={requestNewPasswordResetLink}
-                      disabled={isRequestingNewLink}
-                      className="w-full flex gap-2 items-center justify-center"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      {isRequestingNewLink ? "Enviando..." : "Solicitar um novo link"}
-                    </Button>
-                  )}
+                  <Button 
+                    variant="outline" 
+                    onClick={requestNewPasswordResetLink}
+                    disabled={isRequestingNewLink}
+                    className="w-full flex gap-2 items-center justify-center"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    {isRequestingNewLink ? "Enviando..." : "Solicitar um novo link"}
+                  </Button>
                   <Button 
                     variant="secondary" 
                     onClick={() => navigate('/login')}
@@ -331,6 +468,27 @@ export default function ResetPassword() {
                     Voltar para a página de login
                   </Button>
                 </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Exibir informações adicionais sobre como resolver o problema */}
+          {invalidLink && !import.meta.env.PROD && (
+            <Alert className="mb-6 bg-blue-50 border-blue-200">
+              <AlertTitle className="text-blue-700">Informações adicionais</AlertTitle>
+              <AlertDescription className="text-blue-600 text-sm">
+                <p>Possíveis causas:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>O link foi usado mais de uma vez (links de redefinição são válidos apenas para um uso)</li>
+                  <li>O link expirou (links são válidos por 1 hora)</li>
+                  <li>O link foi modificado ou truncado no email</li>
+                </ul>
+                <p className="mt-2">Recomendações:</p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>Solicite um novo link usando o botão acima</li>
+                  <li>Verifique se o email foi recebido (incluindo a pasta de spam)</li>
+                  <li>Copie e cole o link completo na barra de endereços</li>
+                </ul>
               </AlertDescription>
             </Alert>
           )}
@@ -375,8 +533,16 @@ export default function ResetPassword() {
               </Button>
             </div>
           )}
+          
+          {/* Informações de depuração (visíveis apenas em desenvolvimento) */}
+          {import.meta.env.DEV && debugInfo && (
+            <div className="mt-6 text-xs p-3 bg-gray-100 rounded overflow-auto max-h-40">
+              <h4 className="font-bold mb-1">Informações de depuração:</h4>
+              <pre>{debugInfo}</pre>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-} 
+}
