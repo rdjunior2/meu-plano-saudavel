@@ -68,7 +68,8 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
             }
             
             // Se está na página de login/registro e já está autenticado, redirecionar para dashboard
-            if (['/login', '/register', '/'].includes(location.pathname)) {
+            // Apenas redireciona a partir da página de login ou register, não da página inicial (/)
+            if (['/login', '/register'].includes(location.pathname)) {
               console.log('[AuthWrapper] Usuário já autenticado, redirecionando para dashboard');
               navigate('/dashboard');
             }
@@ -174,10 +175,15 @@ const AppContent = () => {
     path: location.pathname
   });
 
+  // Só mostra a Navbar quando estiver autenticado OU quando estiver em uma rota pública
+  // E nunca mostra nas rotas de login e registro
+  const showNavbar = (userAuthenticated || isCurrentRoutePublic) && 
+                    !['/login', '/register', '/criar-senha', '/reset-password'].includes(location.pathname);
+
   return (
     <>
       <AuthDebugHelper />
-      {(userAuthenticated || isCurrentRoutePublic) && <Navbar />}
+      {showNavbar && <Navbar />}
       <div className="min-h-screen flex flex-col">
         <Routes>
           <Route path="/" element={<Index />} />
@@ -212,9 +218,9 @@ const AppContent = () => {
             </PrivateRoute>
           } />
           <Route path="/admin" element={
-            <PrivateRoute>
+            <AdminRoute>
               <AdminPage />
-            </PrivateRoute>
+            </AdminRoute>
           } />
           <Route path="/historico-compras" element={
             <PrivateRoute>
@@ -229,7 +235,7 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
-      {(userAuthenticated || isCurrentRoutePublic) && <Footer />}
+      {showNavbar && <Footer />}
     </>
   );
 };

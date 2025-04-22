@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Apple, Dumbbell, User, LogOut, MenuIcon, Settings, Menu, X, ShoppingCart } from "lucide-react";
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { 
   Sheet, 
   SheetContent, 
@@ -31,14 +32,26 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar'
 
 const Navbar = () => {
-  const { user, logout: logoutFn } = useAuthStore();
+  const { user, logout: logoutFn, isAuthenticated: isAuthStore } = useAuthStore();
+  const { isAuthenticated: isAuthContext } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   
-  // Verificação apenas para páginas de autenticação
-  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/reset-password' || location.pathname === '/criar-senha') {
+  // Verificação de autenticação combinada
+  const isAuthenticated = isAuthStore || isAuthContext;
+  
+  // Rotas públicas onde o Navbar nunca deve aparecer
+  const hiddenRoutes = ['/login', '/register', '/reset-password', '/criar-senha'];
+
+  // Verificar se estamos em uma rota onde o Navbar nunca deve aparecer
+  if (hiddenRoutes.includes(location.pathname)) {
+    return null;
+  }
+  
+  // Na página inicial, só mostrar a navbar se o usuário estiver autenticado
+  if (location.pathname === '/' && !isAuthenticated) {
     return null;
   }
 

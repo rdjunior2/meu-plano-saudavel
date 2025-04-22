@@ -1,12 +1,26 @@
-
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dumbbell, Apple, ChevronRight, Bike, Salad } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const Index = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated: isAuthStore } = useAuthStore();
+  const { isAuthenticated: isAuthContext } = useAuthContext();
+  const navigate = useNavigate();
+  
+  // Verificação dupla de autenticação para maior segurança
+  const isAuthenticated = isAuthStore || isAuthContext;
+  
+  // Verificar se o usuário já está autenticado ao carregar a página
+  useEffect(() => {
+    console.log('[Index] Estado de autenticação:', { 
+      isAuthStore, 
+      isAuthContext, 
+      isAuthenticated
+    });
+  }, [isAuthStore, isAuthContext, isAuthenticated]);
 
   return (
     <div className="flex flex-col min-h-screen">

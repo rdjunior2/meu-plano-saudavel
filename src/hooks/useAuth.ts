@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { logEvent, LogSeverity } from '../services/logs';
+import { useAuthStore } from '@/stores/authStore';
 
 /**
  * Hook personalizado para verificar autenticação
@@ -9,9 +10,18 @@ import { logEvent, LogSeverity } from '../services/logs';
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const setIsAuthenticatedStore = useAuthStore(state => state.setIsAuthenticated);
+  const checkInProgress = useRef(false);
 
   // Função para verificar autenticação de forma consistente
   const checkAuth = useCallback(async () => {
+    // Evita múltiplas verificações simultâneas
+    if (checkInProgress.current) {
+      return;
+    }
+    
+    checkInProgress.current = true;
+    
     try {
       setIsLoading(true);
       
@@ -26,6 +36,8 @@ const useAuth = () => {
         console.error('[useAuth] Erro ao obter sessão:', error);
         logEvent('auth_error', 'Erro ao verificar sessão', LogSeverity.ERROR, { error: error.message });
         setIsAuthenticated(false);
+        setIsAuthenticatedStore(false);
+        checkInProgress.current = false;
         return;
       }
       
@@ -39,18 +51,19 @@ const useAuth = () => {
       });
       
       // Usuário está autenticado se tiver token OU sessão válida
-      if (tokenExists || hasValidSession) {
+      if (hasValidSession) {
         setIsAuthenticated(true);
+        setIsAuthenticatedStore(true);
         
         // Se tiver sessão mas não token, sincronizar
-        if (hasValidSession && !tokenExists) {
+        if (!tokenExists) {
           console.log('[useAuth] Sincronizando token do localStorage com a sessão');
           localStorage.setItem("token", data.session.access_token);
           logEvent('auth_sync', 'Token sincronizado com sessão', LogSeverity.INFO);
         }
         
         // Se o token expirar em menos de 1 hora, renovar
-        if (hasValidSession && data.session.expires_at) {
+        if (data.session.expires_at) {
           const expiresAt = new Date(data.session.expires_at * 1000);
           const now = new Date();
           const oneHour = 60 * 60 * 1000;
@@ -72,9 +85,12 @@ const useAuth = () => {
           }
         }
       } else {
+        // Não temos uma sessão válida
         setIsAuthenticated(false);
+        setIsAuthenticatedStore(false);
+        
         // Limpar token inválido se houver
-        if (tokenExists && !hasValidSession) {
+        if (tokenExists) {
           console.warn('[useAuth] Token encontrado, mas sessão inválida. Removendo token.');
           localStorage.removeItem("token");
           logEvent('auth_cleanup', 'Token inválido removido', LogSeverity.WARNING);
@@ -84,10 +100,12 @@ const useAuth = () => {
       console.error('[useAuth] Erro ao verificar autenticação:', error);
       logEvent('auth_error', 'Erro ao verificar autenticação', LogSeverity.ERROR, { error });
       setIsAuthenticated(false);
+      setIsAuthenticatedStore(false);
     } finally {
       setIsLoading(false);
+      checkInProgress.current = false;
     }
-  }, []);
+  }, [setIsAuthenticatedStore]);
 
   // Verificar autenticação ao inicializar o hook
   useEffect(() => {
@@ -101,25 +119,41 @@ const useAuth = () => {
         console.log('[useAuth] Usuário autenticado, atualizando token');
         localStorage.setItem("token", session.access_token);
         setIsAuthenticated(true);
+        setIsAuthenticatedStore(true);
         logEvent('auth_event', 'Usuário autenticado', LogSeverity.INFO, { event });
       } else if (event === 'SIGNED_OUT') {
         console.log('[useAuth] Usuário desconectado');
         localStorage.removeItem("token");
         setIsAuthenticated(false);
+        setIsAuthenticatedStore(false);
         logEvent('auth_event', 'Usuário desconectado', LogSeverity.INFO, { event });
       } else if (event === 'TOKEN_REFRESHED' && session) {
         console.log('[useAuth] Token atualizado');
         localStorage.setItem("token", session.access_token);
         setIsAuthenticated(true);
+        setIsAuthenticatedStore(true);
         logEvent('auth_event', 'Token atualizado', LogSeverity.INFO, { event });
+      } else if (event === 'USER_UPDATED' && session) {
+        console.log('[useAuth] Usuário atualizado');
+        localStorage.setItem("token", session.access_token);
+        setIsAuthenticated(true);
+        setIsAuthenticatedStore(true);
+        logEvent('auth_event', 'Usuário atualizado', LogSeverity.INFO, { event });
       }
     });
     
-    // Cleanup do listener
+    // Verificação periódica (a cada 5 minutos)
+    const interval = setInterval(() => {
+      console.log('[useAuth] Executando verificação periódica de autenticação');
+      checkAuth();
+    }, 5 * 60 * 1000);
+    
+    // Cleanup do listener e do intervalo
     return () => {
       data.subscription.unsubscribe();
+      clearInterval(interval);
     };
-  }, [checkAuth]);
+  }, [checkAuth, setIsAuthenticatedStore]);
 
   // Função para realizar logout
   const logout = async () => {
@@ -128,6 +162,7 @@ const useAuth = () => {
       await supabase.auth.signOut();
       localStorage.removeItem("token");
       setIsAuthenticated(false);
+      setIsAuthenticatedStore(false);
       logEvent('auth_logout', 'Logout realizado', LogSeverity.INFO);
     } catch (error) {
       console.error('[useAuth] Erro ao fazer logout:', error);
@@ -142,8 +177,9 @@ const useAuth = () => {
     console.log('[useAuth] Login manual com token');
     localStorage.setItem("token", token);
     setIsAuthenticated(true);
+    setIsAuthenticatedStore(true);
     logEvent('auth_login', 'Login manual realizado', LogSeverity.INFO);
-  }, []);
+  }, [setIsAuthenticatedStore]);
 
   return { 
     isAuthenticated, 

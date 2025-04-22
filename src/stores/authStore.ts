@@ -9,6 +9,7 @@ import {
   updateUserProfile,
   checkPhoneExists
 } from '../services/auth';
+import { supabase } from '../lib/supabaseClient';
 
 // Configuração de cookies consistente com auth.ts
 const COOKIE_OPTIONS = {
@@ -58,7 +59,8 @@ interface AuthState {
   updateUser: (data: Partial<User>) => Promise<{success: boolean, error?: string}>;
   checkUserByPhone: (phone: string) => Promise<{exists: boolean, status: string | null, userId: string | null}>;
   loginWithEmail: (email: string, password: string) => Promise<{success: boolean, user?: User, error?: string, session?: any}>;
-  registerWithEmail: (email: string, password: string, userData: Partial<User>) => Promise<{success: boolean, user?: User, error?: string, warning?: string}>;
+  registerWithEmail: (email: string, password: string, userData: Partial<User>) => Promise<{success: boolean, user?: User, error?: string, warning?: string, session?: any}>;
+  verifySession: () => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -67,24 +69,55 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       
-      login: (userData, token) => set({
-        user: userData,
-        isAuthenticated: true,
-      }),
+      login: (userData, token) => {
+        // Salvar token no localStorage para consistência
+        localStorage.setItem("token", token);
+        
+        set({
+          user: userData,
+          isAuthenticated: true,
+        });
+        
+        console.log('[AuthStore] Usuário autenticado e armazenado:', userData.id);
+      },
       
-      setIsAuthenticated: (value) => set({
-        isAuthenticated: value
-      }),
-      
-      logout: async () => {
-        try {
-          await serviceLogout();
+      setIsAuthenticated: (value) => {
+        // Se estiver desautenticando, também limpar os dados do usuário
+        if (!value) {
           set({
             user: null,
             isAuthenticated: false,
           });
+          console.log('[AuthStore] Estado de autenticação definido como false, dados de usuário limpos');
+        } else {
+          set({
+            isAuthenticated: true
+          });
+          console.log('[AuthStore] Estado de autenticação definido como true');
+        }
+      },
+      
+      logout: async () => {
+        try {
+          await serviceLogout();
+          // Remover token do localStorage
+          localStorage.removeItem("token");
+          
+          set({
+            user: null,
+            isAuthenticated: false,
+          });
+          
+          console.log('[AuthStore] Logout realizado com sucesso');
         } catch (error) {
-          console.error('Erro ao fazer logout:', error);
+          console.error('[AuthStore] Erro ao fazer logout:', error);
+          
+          // Mesmo com erro, limpar o estado
+          localStorage.removeItem("token");
+          set({
+            user: null,
+            isAuthenticated: false,
+          });
         }
       },
       
@@ -119,10 +152,17 @@ export const useAuthStore = create<AuthState>()(
         const result = await serviceLoginWithEmail(email, password);
         
         if (result.success && result.user) {
+          // Salvar token no localStorage
+          if (result.session?.access_token) {
+            localStorage.setItem("token", result.session.access_token);
+          }
+          
           set({
             user: result.user,
             isAuthenticated: true,
           });
+          
+          console.log('[AuthStore] Login com email realizado com sucesso');
         }
         
         return result;
@@ -143,15 +183,26 @@ export const useAuthStore = create<AuthState>()(
             status: 'ativo'
           };
           
+          // Salvar token no localStorage se houver uma sessão
+          // Obs: Estamos ignorando o erro de tipagem aqui, pois sabemos que o resultado
+          // pode conter uma sessão, mesmo que não esteja no tipo
+          const session = (result as any).session;
+          if (session?.access_token) {
+            localStorage.setItem("token", session.access_token);
+          }
+          
           set({
             user,
             isAuthenticated: true,
           });
           
+          console.log('[AuthStore] Registro realizado com sucesso');
+          
           return {
             success: true,
             user,
-            warning: result.warning
+            warning: result.warning,
+            session: (result as any).session
           };
         }
         
@@ -159,6 +210,34 @@ export const useAuthStore = create<AuthState>()(
           success: false,
           error: result.error
         };
+      },
+      
+      // Verificar se a sessão ainda é válida
+      verifySession: async () => {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('[AuthStore] Erro ao verificar sessão:', error);
+            set({ isAuthenticated: false, user: null });
+            return false;
+          }
+          
+          const isValid = !!data.session;
+          
+          // Se a sessão não for válida, limpar estado
+          if (!isValid) {
+            console.log('[AuthStore] Sessão inválida, limpando estado de autenticação');
+            set({ isAuthenticated: false, user: null });
+            localStorage.removeItem("token");
+          }
+          
+          return isValid;
+        } catch (error) {
+          console.error('[AuthStore] Erro ao verificar sessão:', error);
+          set({ isAuthenticated: false, user: null });
+          return false;
+        }
       }
     }),
     {
@@ -168,6 +247,23 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Antes de hidratar o estado do armazenamento, verificar se o token existe
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state) {
+            // Se não houver token no localStorage mas o estado persistido diz que está autenticado,
+            // significa que o estado está inválido e deve ser limpo
+            const token = localStorage.getItem("token");
+            if (!token && state.isAuthenticated) {
+              console.warn('[AuthStore] Estado inconsistente: não há token, mas o estado está autenticado. Limpando...');
+              state.setIsAuthenticated(false);
+            } else if (state.isAuthenticated) {
+              // Atualizar verificação da sessão
+              state.verifySession();
+            }
+          }
+        };
+      },
     }
   )
 );

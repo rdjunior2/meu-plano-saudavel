@@ -39,7 +39,18 @@ const PrivateRoute = ({
         
         if (token) {
           // Verificar se o token é válido consultando a sessão
-          const { data } = await supabase.auth.getSession();
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('[PrivateRoute] Erro ao verificar sessão:', error);
+            logEvent('auth_error', 'Erro ao verificar sessão', LogSeverity.ERROR, { 
+              path: location.pathname,
+              error: error.message
+            });
+            setIsTokenVerified(false);
+            setIsVerifying(false);
+            return;
+          }
           
           if (data.session) {
             logEvent('auth_check', 'Verificação de autenticação bem-sucedida', LogSeverity.INFO, { 
@@ -51,6 +62,8 @@ const PrivateRoute = ({
             logEvent('auth_warning', 'Token encontrado, mas sessão inválida', LogSeverity.WARNING, { 
               path: location.pathname
             });
+            // Sessão inválida, remover token
+            localStorage.removeItem("token");
             setIsTokenVerified(false);
           }
         } else {
