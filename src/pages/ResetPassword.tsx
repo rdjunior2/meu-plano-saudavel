@@ -55,6 +55,8 @@ export default function ResetPassword() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const [invalidLink, setInvalidLink] = useState<boolean>(false);
+  const [isSessionSet, setIsSessionSet] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   const form = useForm<ResetPasswordForm>({
     resolver: zodResolver(resetPasswordSchema),
@@ -64,25 +66,67 @@ export default function ResetPassword() {
     },
   });
   
-  // Verifica se a URL contém os parâmetros de recuperação de senha
+  // Configura a sessão com os tokens da URL e valida o usuário
   useEffect(() => {
-    const handleHashParams = () => {
-      // O Supabase envia os parâmetros após o "#" na URL
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      
-      const type = params.get('type');
-      
-      console.log('Tipo de ação na URL:', type);
-      
-      // Validar se o tipo é 'recovery'
-      if (type !== 'recovery') {
+    const setupUserSession = async () => {
+      try {
+        // O Supabase envia os parâmetros após o "#" na URL
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+        
+        console.log('[ResetPassword] Parâmetros detectados:', { 
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          type
+        });
+        
+        // Validar se temos tokens e o tipo é 'recovery'
+        if (!accessToken || !refreshToken || type !== 'recovery') {
+          setInvalidLink(true);
+          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          return;
+        }
+        
+        // Configurar a sessão com os tokens recebidos
+        const { data, error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        
+        if (sessionError) {
+          console.error('[ResetPassword] Erro ao configurar sessão:', sessionError);
+          setInvalidLink(true);
+          setError(`Erro ao validar tokens: ${sessionError.message}`);
+          return;
+        }
+        
+        console.log('[ResetPassword] Sessão configurada com sucesso');
+        
+        // Verificar se o usuário está autenticado
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !userData.user) {
+          console.error('[ResetPassword] Erro ao obter usuário:', userError);
+          setInvalidLink(true);
+          setError('Não foi possível validar sua identidade. Solicite um novo link.');
+          return;
+        }
+        
+        console.log('[ResetPassword] Usuário autenticado:', userData.user.email);
+        setUserEmail(userData.user.email);
+        setIsSessionSet(true);
+      } catch (err) {
+        console.error('[ResetPassword] Erro ao processar parâmetros:', err);
         setInvalidLink(true);
-        setError('Link de recuperação inválido ou expirado.');
+        setError('Ocorreu um erro ao processar o link de recuperação.');
       }
     };
     
-    handleHashParams();
+    setupUserSession();
   }, []);
   
   const onSubmit = async (data: ResetPasswordForm) => {
@@ -91,13 +135,16 @@ export default function ResetPassword() {
       return;
     }
     
+    if (!isSessionSet) {
+      setError('A sessão não foi configurada corretamente. Tente novamente.');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     
     try {
-      // Quando o usuário clica no link de recuperação, o Supabase já processa 
-      // o token e configura a sessão automaticamente. Então, podemos
-      // simplesmente chamar updateUser diretamente.
+      // Atualizar a senha do usuário
       const { error } = await supabase.auth.updateUser({
         password: data.password
       });
@@ -117,7 +164,7 @@ export default function ResetPassword() {
       }, 3000);
       
     } catch (err) {
-      console.error('Erro ao redefinir senha:', err);
+      console.error('[ResetPassword] Erro ao redefinir senha:', err);
       setError(err instanceof Error ? err.message : 'Ocorreu um erro ao redefinir sua senha.');
     } finally {
       setIsLoading(false);
@@ -130,7 +177,7 @@ export default function ResetPassword() {
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Redefinir Senha</CardTitle>
           <CardDescription className="text-center">
-            Digite sua nova senha para continuar
+            {userEmail ? `Para a conta ${userEmail}` : 'Digite sua nova senha para continuar'}
           </CardDescription>
         </CardHeader>
         
@@ -224,7 +271,7 @@ export default function ResetPassword() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading}
+                  disabled={isLoading || !isSessionSet}
                 >
                   {isLoading ? 'Processando...' : 'Redefinir Senha'}
                 </Button>

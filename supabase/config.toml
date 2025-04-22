@@ -1,1 +1,9 @@
 project_id = "ykepyxcjsnvesbkuxgmv"
+
+[auth]
+site_url = "https://meu-plano-saudavel.vercel.app"
+additional_redirect_urls = [
+  "https://meu-plano-saudavel.vercel.app/reset-password",
+  "http://localhost:3000/reset-password",
+  "https://*-meu-plano-saudavel.vercel.app/reset-password"
+]

@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import type { Admin } from '../lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
+
+// Definindo o tipo Admin localmente
+export type Admin = {
+  id: string;
+  nome: string;
+  telefone: string;
+  email?: string;
+  criado_em?: string;
+};
 
 export default function CreateAdmin() {
   const navigate = useNavigate();

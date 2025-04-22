@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import { FormStatus, PlanStatus, PurchaseStatus } from '../integrations/supabase/types'
 
 /**

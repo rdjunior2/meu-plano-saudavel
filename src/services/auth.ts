@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import Cookies from 'js-cookie'
 import { User } from '../types/user'
 
