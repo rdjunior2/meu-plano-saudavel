@@ -35,6 +35,7 @@ Este documento lista todas as modificações realizadas no projeto para atender 
   - `form_responses`
   - `products`
   - `purchases`
+- ✅ Criada a tabela `user_status` com campos para rastreamento de formulários preenchidos e implementados triggers para manter os registros atualizados.
 
 ## 4. Automação e n8n
 
@@ -51,6 +52,7 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - ✅ Foram gerados comentários no código explicando blocos principais
 - ✅ Adicionados avisos em locais sensíveis (manipulação de tokens)
 - ✅ Atualização dos schemas das tabelas (migrations SQL)
+- ✅ Corrigido erro de página em branco no dashboard após login, criando a tabela `user_status` que estava faltando e implementando triggers para sincronização
 
 ## Arquivos Criados ou Alterados
 
@@ -66,6 +68,8 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - `src/tests/auth.test.ts`
 - `src/tests/setup.ts`
 - `supabase/migrations/20240716_add_foreign_key_constraints.sql`
+- `supabase/migrations/20240428000000_create_user_status_table.sql`
+- `supabase/migrations/20240428000001_create_user_status_triggers.sql`
 - `CHANGELOG.md`
 
 ### Arquivos Modificados
@@ -85,13 +89,15 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - `src/services/purchases.ts`
 - `src/services/users.ts`
 - `src/tests/auth.test.ts`
+- `CHANGELOG.md`
+- `RESUMO_MODIFICACOES.md`
 
 ### Arquivos Removidos
 - `src/lib/supabase.ts`
 
 ## Próximos Passos Recomendados
 
-1. **Deploy de migrations**: Executar as migrations SQL criadas para adicionar as foreign keys e a tabela de logs.
+1. **Deploy de migrations**: Executar as migrations SQL criadas para adicionar as foreign keys, a tabela de logs e a nova tabela `user_status`.
 2. **Configuração das notificações**: Configurar o n8n para enviar notificações quando erros críticos são registrados.
 3. **Expansão de testes**: Adicionar testes para as outras funções críticas (purchases, forms, etc).
 4. **Monitoramento**: Implementar um dashboard para monitorar erros críticos registrados na tabela de logs.

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.2] - 2025-04-28
+
+### Correções
+- **Tabela user_status adicionada:** 
+  - Criada a tabela `user_status` que estava faltando no banco de dados.
+  - Adicionados triggers para gerenciar automaticamente a criação de registros para novos usuários.
+  - Implementada migração para criar registros para usuários existentes.
+  - Corrigido o problema da página de dashboard em branco após o login.
+
+### Melhorias
+- **Índices e permissões:**
+  - Adicionado índice para melhorar a performance em consultas à tabela `user_status`.
+  - Configuradas permissões apropriadas para usuários anônimos e autenticados.
+
 ## [1.0.1] - 2025-04-22
 
 ### Refatoração
