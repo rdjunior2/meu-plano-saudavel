@@ -171,6 +171,47 @@ export default function ResetPassword() {
     }
   };
   
+  // Extraindo campos do formulário para melhorar a legibilidade do JSX
+  const passwordField = (
+    <FormField
+      control={form.control}
+      name="password"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Nova Senha</FormLabel>
+          <FormControl>
+            <Input 
+              type="password" 
+              placeholder="Digite sua nova senha" 
+              {...field} 
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+  
+  const confirmPasswordField = (
+    <FormField
+      control={form.control}
+      name="confirmPassword"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Confirme a Nova Senha</FormLabel>
+          <FormControl>
+            <Input 
+              type="password" 
+              placeholder="Confirme sua nova senha" 
+              {...field} 
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+  
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
@@ -221,41 +262,9 @@ export default function ResetPassword() {
           {!success && !invalidLink && (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nova Senha</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="Digite sua nova senha" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {passwordField}
                 
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirme a Nova Senha</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="Confirme sua nova senha" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {confirmPasswordField}
                 
                 <div className="text-xs text-muted-foreground mt-2">
                   <p>A senha deve conter pelo menos:</p>

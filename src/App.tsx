@@ -25,6 +25,8 @@ import HistoricoCompras from "./pages/HistoricoCompras";
 import UserProfile from "./pages/UserProfile";
 import { logEvent, LogSeverity } from "./services/logs";
 import ResetPassword from "./pages/ResetPassword";
+import { AuthProvider } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
 
 const queryClient = new QueryClient();
 
@@ -206,69 +208,71 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthWrapper>
-            <Navbar />
-            <div className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/criar-senha" element={<CriarSenha />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/create-admin" element={<CreateAdmin />} />
-                <Route path="/anamnese" element={
-                  <ProtectedRoute>
-                    <Anamnese />
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/plano/:id" element={
-                  <ProtectedRoute>
-                    <PlanoDetalhes />
-                  </ProtectedRoute>
-                } />
-                <Route path="/formulario-alimentar" element={
-                  <ProtectedRoute>
-                    <FormularioAlimentar />
-                  </ProtectedRoute>
-                } />
-                <Route path="/formulario-treino" element={
-                  <ProtectedRoute>
-                    <FormularioTreino />
-                  </ProtectedRoute>
-                } />
-                <Route path="/perfil" element={
-                  <ProtectedRoute>
-                    <UserProfile />
-                  </ProtectedRoute>
-                } />
-                <Route path="/historico-compras" element={
-                  <ProtectedRoute>
-                    <HistoricoCompras />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin" element={
-                  <AdminRoute>
-                    <AdminPage />
-                  </AdminRoute>
-                } />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-            <Footer />
-          </AuthWrapper>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthWrapper>
+              <Navbar />
+              <div className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/criar-senha" element={<CriarSenha />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/create-admin" element={<CreateAdmin />} />
+                  <Route path="/anamnese" element={
+                    <ProtectedRoute>
+                      <Anamnese />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/plano/:id" element={
+                    <ProtectedRoute>
+                      <PlanoDetalhes />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/formulario-alimentar" element={
+                    <ProtectedRoute>
+                      <FormularioAlimentar />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/formulario-treino" element={
+                    <ProtectedRoute>
+                      <FormularioTreino />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/perfil" element={
+                    <ProtectedRoute>
+                      <UserProfile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/historico-compras" element={
+                    <ProtectedRoute>
+                      <HistoricoCompras />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin" element={
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  } />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
+              <Footer />
+            </AuthWrapper>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 };
 
