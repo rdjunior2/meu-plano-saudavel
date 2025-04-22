@@ -43,6 +43,10 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
     const initializeAuth = async () => {
       try {
         console.log('[AuthWrapper] Inicializando autenticação, caminho atual:', location.pathname);
+        
+        // Garantir que isAuthenticated seja false por padrão durante a inicialização
+        setIsAuthenticated(false);
+        
         const session = await checkSession();
         
         if (session) {
@@ -177,6 +181,14 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const setIsAuthenticated = useAuthStore((state) => state.setIsAuthenticated);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setIsAuthenticated(false);
+    }
+  }, [setIsAuthenticated]);
 
   return (
     <AuthProvider>
@@ -186,7 +198,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthWrapper>
-              {isAuthenticated && <Navbar />}
+              {isAuthenticated ? <Navbar /> : null}
               <div className="flex-1">
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -238,7 +250,7 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
-              <Footer />
+              {isAuthenticated ? <Footer /> : null}
             </AuthWrapper>
           </BrowserRouter>
         </TooltipProvider>

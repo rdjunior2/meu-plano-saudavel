@@ -37,16 +37,21 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Verificação dupla para garantir que componente não renderize em páginas de autenticação
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/reset-password') {
+    return null;
+  }
+  
+  // Verificação de autenticação - se não estiver autenticado, não renderize o Navbar
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleLogout = React.useCallback(async () => {
     await logoutFn();
     navigate('/login');
   }, [logoutFn, navigate]);
-
-  // Se o usuário não estiver autenticado, não renderize o Navbar
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <header className="sticky top-0 z-10 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

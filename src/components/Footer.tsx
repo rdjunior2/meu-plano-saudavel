@@ -1,10 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 const Footer = () => {
   const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
+  
+  // Verificação dupla para garantir que componente não renderize em páginas de autenticação
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/reset-password') {
+    return null;
+  }
 
   // Se o usuário não estiver autenticado, não renderize o Footer
   if (!isAuthenticated) {

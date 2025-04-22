@@ -11,8 +11,17 @@ const useAuth = () => {
   useEffect(() => {
     // Verificar autenticação
     const checkAuth = () => {
+      // Primeiro definimos como não autenticado por padrão
+      setIsAuthenticated(false);
+      
+      // Depois verificamos se existe um token
       const token = localStorage.getItem("token");
-      setIsAuthenticated(!!token);
+      
+      // Só define como autenticado se o token existir
+      if (token) {
+        setIsAuthenticated(true);
+      }
+      
       setIsLoading(false);
     };
 
