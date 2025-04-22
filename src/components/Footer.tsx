@@ -1,9 +1,16 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
 
 const Footer = () => {
+  const { isAuthenticated } = useAuthStore();
+
+  // Se o usuário não estiver autenticado, não renderize o Footer
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <footer className="w-full border-t border-border/40 bg-background py-6">
       <div className="container flex flex-col items-center justify-center gap-4 md:flex-row md:justify-between">

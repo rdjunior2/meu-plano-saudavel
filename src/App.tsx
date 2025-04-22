@@ -134,8 +134,21 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
 
 // Verifica se a rota é pública (não requer autenticação)
 const isPublicRoute = (pathname: string) => {
-  const publicRoutes = ['/', '/login', '/register', '/criar-senha', '/reset-password'];
-  return publicRoutes.includes(pathname);
+  // Lista de rotas públicas básicas
+  const publicRoutes = ['/', '/login', '/register', '/criar-senha'];
+  
+  // Verificação direta para rotas básicas
+  if (publicRoutes.includes(pathname)) {
+    return true;
+  }
+  
+  // Verificação especial para a rota de redefinição de senha
+  // Isso garantirá que /reset-password com qualquer parâmetro ou hash seja considerada pública
+  if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) {
+    return true;
+  }
+  
+  return false;
 };
 
 // Componente para rotas protegidas de admin
@@ -163,6 +176,8 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
@@ -171,7 +186,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthWrapper>
-              <Navbar />
+              {isAuthenticated && <Navbar />}
               <div className="flex-1">
                 <Routes>
                   <Route path="/" element={<Index />} />
