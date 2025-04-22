@@ -27,11 +27,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         // Estratégia de chunking para dividir o código em partes menores
         manualChunks: (id) => {
-          // Componentes de UI do Radix
-          if (id.includes('@radix-ui/')) {
-            return 'radix';
-          }
-          
           // Separa React e React DOM
           if (id.includes('react') || id.includes('react-dom')) {
             return 'react-vendor';
