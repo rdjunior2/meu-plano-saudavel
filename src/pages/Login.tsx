@@ -125,7 +125,11 @@ const Login = () => {
         return;
       }
       
-      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+      // Exibir um toast mais informativo
+      toast.success(
+        "Email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
+        { duration: 6000 }
+      );
     } catch (error) {
       console.error('[PasswordReset] Erro completo:', error);
       toast.error("Ocorreu um erro. Tente novamente mais tarde.");
@@ -197,6 +201,12 @@ const Login = () => {
                 >
                   {isResetLoading ? "Enviando..." : "Esqueceu sua senha?"}
                 </Button>
+              </div>
+              
+              {/* Adicionar informações sobre recuperação de senha */}
+              <div className="text-xs text-muted-foreground text-center mt-1">
+                Insira seu email e clique em "Esqueceu sua senha?" para receber
+                um link de redefinição por email
               </div>
             </form>
           </Form>

@@ -253,4 +253,42 @@ export const checkPhoneExists = async (phone: string) => {
     console.error('Erro ao verificar telefone:', error)
     return { exists: false, status: null }
   }
+}
+
+/**
+ * Atualiza a senha do usuário usando um token de recuperação
+ * @param newPassword Nova senha do usuário
+ * @param accessToken Token de acesso fornecido na URL de recuperação
+ * @returns Objeto indicando o sucesso ou erro da operação
+ */
+export const updateUserPassword = async (newPassword: string, accessToken: string) => {
+  try {
+    console.log('Atualizando senha do usuário com token de acesso');
+    
+    // Usar diretamente o updateUser sem segundo parâmetro, pois o token já está salvo na sessão
+    // após o redirecionamento do link de recuperação
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    
+    if (error) {
+      console.error('Erro ao atualizar senha:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Não foi possível atualizar a senha.' 
+      };
+    }
+    
+    console.log('Senha atualizada com sucesso');
+    return { 
+      success: true, 
+      user: data.user 
+    };
+  } catch (error) {
+    console.error('Erro ao atualizar senha:', error);
+    return { 
+      success: false, 
+      error: 'Ocorreu um erro inesperado ao atualizar a senha.' 
+    };
+  }
 } 
