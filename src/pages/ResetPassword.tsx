@@ -28,7 +28,8 @@ import * as z from 'zod';
 
 // Alerta para feedback
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Esquema de validação para o formulário
 const resetPasswordSchema = z.object({
@@ -57,6 +58,7 @@ export default function ResetPassword() {
   const [invalidLink, setInvalidLink] = useState<boolean>(false);
   const [isSessionSet, setIsSessionSet] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isRequestingNewLink, setIsRequestingNewLink] = useState<boolean>(false);
   
   const form = useForm<ResetPasswordForm>({
     resolver: zodResolver(resetPasswordSchema),
@@ -70,9 +72,26 @@ export default function ResetPassword() {
   useEffect(() => {
     const setupUserSession = async () => {
       try {
-        // O Supabase envia os parâmetros após o "#" na URL
+        // Verificar tanto o hash (#) quanto os parâmetros de consulta (?) da URL
+        // O Supabase pode enviar os tokens em diferentes partes da URL dependendo da configuração
+        let params;
+        
+        // Verifica primeiro o hash (formato tradicional)
         const hash = window.location.hash.substring(1);
-        const params = new URLSearchParams(hash);
+        if (hash) {
+          console.log('[ResetPassword] Parâmetros detectados no hash da URL');
+          params = new URLSearchParams(hash);
+        } 
+        // Depois verifica a string de consulta (formato alternativo)
+        else if (window.location.search) {
+          console.log('[ResetPassword] Parâmetros detectados na query string da URL');
+          params = new URLSearchParams(window.location.search.substring(1));
+        }
+        // Se não encontrou em nenhum lugar, cria um objeto vazio
+        else {
+          console.log('[ResetPassword] Nenhum parâmetro detectado na URL');
+          params = new URLSearchParams();
+        }
         
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
@@ -86,6 +105,11 @@ export default function ResetPassword() {
         
         // Validar se temos tokens e o tipo é 'recovery'
         if (!accessToken || !refreshToken || type !== 'recovery') {
+          console.error('[ResetPassword] Tokens inválidos ou ausentes:', { 
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            type
+          });
           setInvalidLink(true);
           setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
           return;
@@ -171,6 +195,46 @@ export default function ResetPassword() {
     }
   };
   
+  // Função para solicitar um novo link de redefinição
+  const requestNewPasswordResetLink = async () => {
+    if (!userEmail) {
+      toast.error("Email não encontrado. Por favor, retorne à página de login.");
+      return;
+    }
+    
+    setIsRequestingNewLink(true);
+    
+    try {
+      // Determinar a URL de redirecionamento apropriada
+      const origin = window.location.origin;
+      const redirectUrl = `${origin}/reset-password`;
+      
+      console.log('[ResetPassword] Solicitando novo link:', { 
+        email: userEmail,
+        redirectUrl
+      });
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: redirectUrl,
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      toast.success(
+        "Novo email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
+        { duration: 6000 }
+      );
+      
+    } catch (err) {
+      console.error('[ResetPassword] Erro ao solicitar novo link:', err);
+      toast.error("Não foi possível enviar um novo link. Tente novamente mais tarde.");
+    } finally {
+      setIsRequestingNewLink(false);
+    }
+  };
+  
   // Extraindo campos do formulário para melhorar a legibilidade do JSX
   const passwordField = (
     <FormField
@@ -247,14 +311,26 @@ export default function ResetPassword() {
               <AlertTitle>Link Inválido</AlertTitle>
               <AlertDescription>
                 O link de recuperação de senha é inválido ou expirou. 
-                <Button 
-                  variant="link" 
-                  onClick={() => navigate('/login')}
-                  className="px-0 text-destructive"
-                >
-                  Volte para a página de login
-                </Button> 
-                e solicite um novo link.
+                <div className="mt-2 flex flex-col gap-2">
+                  {userEmail && (
+                    <Button 
+                      variant="outline" 
+                      onClick={requestNewPasswordResetLink}
+                      disabled={isRequestingNewLink}
+                      className="w-full flex gap-2 items-center justify-center"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      {isRequestingNewLink ? "Enviando..." : "Solicitar um novo link"}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => navigate('/login')}
+                    className="w-full"
+                  >
+                    Voltar para a página de login
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}

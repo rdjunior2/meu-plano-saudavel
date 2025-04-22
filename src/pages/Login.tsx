@@ -89,14 +89,15 @@ const Login = () => {
       setIsResetLoading(true);
       
       // Determinar a URL de redirecionamento apropriada
-      // Usar a origem atual para funcionamento em desenvolvimento e produção
-      const url = window.location.origin;
-      const redirectUrl = `${url}/reset-password`;
+      // Garantir que a URL seja absoluta (com protocolo) para compatibilidade
+      const origin = window.location.origin;
+      const redirectUrl = `${origin}/reset-password`;
       
       // Log detalhado para depuração da configuração do Supabase
       console.log('[PasswordReset] Iniciando recuperação de senha:', { 
         email,
-        redirectUrl
+        redirectUrl,
+        currentLocationFull: window.location.href
       });
       
       // Usar a instância centralizada do Supabase em vez de criar uma nova
@@ -113,8 +114,16 @@ const Login = () => {
       // Exibir um toast mais informativo
       toast.success(
         "Email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
-        { duration: 6000 }
+        { duration: 8000 }
       );
+      
+      // Mostrar instruções adicionais para o usuário
+      setTimeout(() => {
+        toast.info(
+          "Ao clicar no link enviado, você será redirecionado para definir uma nova senha. Se o link não funcionar, solicite um novo na página de login.",
+          { duration: 10000 }
+        );
+      }, 1000);
     } catch (error) {
       console.error('[PasswordReset] Erro completo:', error);
       toast.error("Ocorreu um erro. Tente novamente mais tarde.");
