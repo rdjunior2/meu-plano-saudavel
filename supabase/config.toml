@@ -3,7 +3,31 @@ project_id = "ykepyxcjsnvesbkuxgmv"
 [auth]
 site_url = "https://meu-plano-saudavel.vercel.app"
 additional_redirect_urls = [
+  # URLs básicas para redefinição de senha
   "https://meu-plano-saudavel.vercel.app/reset-password",
   "http://localhost:3000/reset-password",
-  "https://*-meu-plano-saudavel.vercel.app/reset-password"
+  
+  # URLs com formatos específicos para token
+  "https://meu-plano-saudavel.vercel.app/reset-password#token=*",
+  "http://localhost:3000/reset-password#token=*",
+  
+  # URLs com parâmetros e hash para compatibilidade total
+  "https://meu-plano-saudavel.vercel.app/reset-password?*",
+  "http://localhost:3000/reset-password?*",
+  "https://meu-plano-saudavel.vercel.app/reset-password#*",
+  "http://localhost:3000/reset-password#*",
+  
+  # URLs de domínio base para outras operações
+  "https://meu-plano-saudavel.vercel.app",
+  "http://localhost:3000"
 ]
+
+# Configuração do servidor SMTP para envio de emails
+[auth.smtp]
+enabled = true
+sender_name = "Meu Plano"
+sender_address = "noreply@meu-plano-saudavel.vercel.app"
+
+# Configuração específica para redefinição de senha
+[auth.passwords]
+token_expiry_seconds = 10800  # 3 horas de validade para o token
