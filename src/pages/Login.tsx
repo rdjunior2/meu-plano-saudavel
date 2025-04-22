@@ -93,14 +93,29 @@ const Login = () => {
       const url = window.location.origin;
       const redirectUrl = `${url}/reset-password`;
       
-      console.log('[PasswordReset] Enviando email de recuperação', { 
+      // Log detalhado para depuração da configuração do Supabase
+      console.log('[PasswordReset] Detalhes da configuração:', { 
         email,
         redirectUrl,
-        origin: window.location.origin
+        origin: window.location.origin,
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'Usando URL padrão',
+        supabaseAnonKeyLength: (import.meta.env.VITE_SUPABASE_ANON_KEY || 'N/A').toString().length,
+        supabaseAnonKeyStart: (import.meta.env.VITE_SUPABASE_ANON_KEY || 'N/A').toString().substring(0, 10),
+        isLocalhost: window.location.hostname === 'localhost',
+        fullURL: window.location.href
       });
       
+      // Criando uma nova instância do cliente Supabase com a chave fixa
+      // para garantir que a chave anônima seja válida
+      const supabaseUrl = 'https://ykepyxcjsnvesbkuxgmv.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZXB5eGNqc252ZXNia3V4Z212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk2NzY5NzAsImV4cCI6MjAyNTI1Mjk3MH0.Yx_QXKHf_ED_WTVkw2pGPQE5UgJhHCQF_-dkTBxvEbY';
+      
+      // Importação dinâmica para evitar problemas de ciclo de referência
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      
       // Chamada para o Supabase para iniciar o processo de recuperação de senha
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
       
@@ -112,7 +127,7 @@ const Login = () => {
       
       toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
     } catch (error) {
-      console.error('[PasswordReset] Erro:', error);
+      console.error('[PasswordReset] Erro completo:', error);
       toast.error("Ocorreu um erro. Tente novamente mais tarde.");
     } finally {
       setIsResetLoading(false);
