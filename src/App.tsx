@@ -47,6 +47,10 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
         // Garantir que isAuthenticated seja false por padrão durante a inicialização
         setIsAuthenticated(false);
         
+        // Verificando se há token no localStorage
+        const localToken = localStorage.getItem('token');
+        
+        // Verificar a sessão no Supabase
         const session = await checkSession();
         
         if (session) {
@@ -54,6 +58,12 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
             userId: session.user.id,
             expiresAt: new Date(session.expires_at * 1000).toISOString()
           });
+          
+          // Se não existir token no localStorage mas existir sessão,
+          // sincronize os tokens
+          if (!localToken && session.access_token) {
+            localStorage.setItem('token', session.access_token);
+          }
           
           // Sessão existente, buscar perfil do usuário
           const user = await getUserProfile(session.user.id);

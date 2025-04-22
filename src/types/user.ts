@@ -7,4 +7,6 @@ export interface User {
   is_admin?: boolean;
   formulario_alimentar_preenchido?: boolean;
   formulario_treino_preenchido?: boolean;
+  alimentar_completed?: boolean;
+  treino_completed?: boolean;
 } 

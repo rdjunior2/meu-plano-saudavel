@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/authStore';
 import { logEvent, LogSeverity } from '../services/logs';
 
 /**
@@ -18,10 +19,28 @@ interface PrivateRouteProps {
 const PrivateRoute = ({ 
   children, 
   redirectPath = "/login",
-  loadingComponent = <div>Carregando...</div>
+  loadingComponent = <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  </div>
 }: PrivateRouteProps) => {
-  const { isAuthenticated, isLoading } = useAuthContext();
+  const { isAuthenticated: authContextAuthenticated, isLoading: authContextLoading } = useAuthContext();
+  const authStoreAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const [isVerifying, setIsVerifying] = useState(true);
   const location = useLocation();
+
+  // Combinando os resultados das duas fontes de autenticação
+  const isAuthenticated = authContextAuthenticated || authStoreAuthenticated;
+  const isLoading = authContextLoading || isVerifying;
+
+  // Verificação adicional com token no localStorage
+  useEffect(() => {
+    const verifyAuth = () => {
+      const token = localStorage.getItem('token');
+      setIsVerifying(false);
+    };
+    
+    verifyAuth();
+  }, []);
 
   // Verificação de parâmetros sensíveis na URL (prevenção contra XSS)
   useEffect(() => {

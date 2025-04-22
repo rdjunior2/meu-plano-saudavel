@@ -271,17 +271,34 @@ export default function ResetPassword() {
       console.log('[ResetPassword] Senha atualizada com sucesso');
       setSuccess(true);
       
-      // Limpar o hash da URL por segurança
-      window.history.replaceState(null, '', window.location.pathname);
+      // Garantir que o usuário esteja autenticado
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      // Redirecionar para a página de login após 3 segundos
+      // Obter dados do usuário para configuração adequada no estado
+      if (sessionData.session) {
+        const { data: userData } = await supabase.auth.getUser();
+        
+        if (userData.user) {
+          // Armazenar o token na localStorage para o AuthContext e useAuthStore
+          localStorage.setItem('token', sessionData.session.access_token);
+          
+          // Forçar um recarregamento completo da página para atualizar todos os estados
+          // Isso evita problemas de hooks e estados inconsistentes
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 1500);
+          
+          return;
+        }
+      }
+      
+      // Se não conseguiu obter a sessão, redirecionar para login após 2 segundos
       setTimeout(() => {
         navigate('/login');
-      }, 3000);
-      
-    } catch (err) {
+      }, 2000);
+    } catch (err: any) {
       console.error('[ResetPassword] Erro ao redefinir senha:', err);
-      setError(err instanceof Error ? err.message : 'Ocorreu um erro ao redefinir sua senha.');
+      setError(err.message || 'Ocorreu um erro ao redefinir sua senha.');
     } finally {
       setIsLoading(false);
     }

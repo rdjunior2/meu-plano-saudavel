@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../stores/authStore';
@@ -18,12 +18,12 @@ import {
   TabsTrigger,
 } from '../components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../lib/supabaseClient';
 import { 
-  FormStatus, 
   PlanStatus, 
   PurchaseStatus, 
-  ProductType 
+  ProductType, 
+  FormStatus as ApiFormStatus
 } from '../integrations/supabase/types';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -31,7 +31,6 @@ import { IconActivity, IconList, IconClock, IconAlertCircle, IconClipboardCheck,
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle, Check, Info, Package, ShoppingCart, FileText, FileCheck2, FileX2, CalendarClock } from "lucide-react";
 
@@ -61,7 +60,7 @@ interface PurchaseItem {
   product_id: string;
   product_name: string;
   product_type: ProductType;
-  form_status: FormStatus;
+  form_status: ApiFormStatus;
   plan_status: PlanStatus;
   has_form_response: boolean;
   item_created_at: string;
@@ -85,7 +84,7 @@ interface WorkoutPlan {
   user_id: string;
 }
 
-interface FormStatus {
+interface UserFormStatus {
   alimentar_completed: boolean;
   treino_completed: boolean;
 }
@@ -110,32 +109,11 @@ const Dashboard: React.FC = () => {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formStatus, setFormStatus] = useState<FormStatus>({ alimentar_completed: false, treino_completed: false });
+  const [formStatus, setFormStatus] = useState<UserFormStatus>({ alimentar_completed: false, treino_completed: false });
   const [planos, setPlanos] = useState<any[]>([]);
   const [purchaseStatus, setPurchaseStatus] = useState<UserPurchaseStatus | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    const fetchUserData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchPurchaseItems(),
-        fetchUserStats(),
-        fetchPlans(),
-        fetchFormStatus(),
-        fetchPurchaseStatus()
-      ]);
-      setLoading(false);
-    };
-
-    fetchUserData();
-  }, [isAuthenticated, user?.id]);
-
-  const fetchUserStats = async () => {
+  const fetchUserStats = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -155,9 +133,9 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Erro ao processar estatísticas do usuário:', error);
     }
-  };
+  }, [user?.id]);
 
-  const fetchPurchaseItems = async () => {
+  const fetchPurchaseItems = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -176,9 +154,9 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Erro ao processar compras:', error);
     }
-  };
+  }, [user?.id]);
 
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -208,9 +186,11 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Erro ao processar planos:', error);
     }
-  };
+  }, [user?.id]);
 
-  const fetchFormStatus = async () => {
+  const fetchFormStatus = useCallback(async () => {
+    if (!user?.id) return;
+    
     try {
       const { data, error } = await supabase
         .from('user_status')
@@ -222,7 +202,7 @@ const Dashboard: React.FC = () => {
 
       if (data) {
         setFormStatus(data);
-        // Atualiza o status do usuário na store
+        // Atualiza o status do usuário na store com tipagem correta
         updateUser({
           ...user,
           alimentar_completed: data.alimentar_completed,
@@ -234,9 +214,9 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, updateUser]);
 
-  const fetchPurchaseStatus = async () => {
+  const fetchPurchaseStatus = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -252,13 +232,49 @@ const Dashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro ao buscar status de compras:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar o status das suas compras",
-        variant: "destructive",
-      });
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchPurchaseItems(),
+          fetchUserStats(),
+          fetchPlans(),
+          fetchFormStatus(),
+          fetchPurchaseStatus()
+        ]);
+      } catch (error) {
+        console.error('Erro ao buscar dados do usuário:', error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar seus dados. Tente novamente mais tarde.',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [
+    isAuthenticated, 
+    user?.id, 
+    navigate, 
+    fetchPurchaseItems,
+    fetchUserStats,
+    fetchPlans,
+    fetchFormStatus,
+    fetchPurchaseStatus,
+    toast
+  ]);
 
   const hasMealProduct = () => {
     return purchaseItems.some(item => 
@@ -670,6 +686,14 @@ const Dashboard: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4 flex items-center justify-center h-[calc(100vh-100px)]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -688,46 +712,38 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-          </div>
-        ) : (
-          <>
-            {renderPurchaseStatus()}
-            {renderFormStatus()}
-            {renderStatusMessage()}
+        {renderPurchaseStatus()}
+        {renderFormStatus()}
+        {renderStatusMessage()}
 
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4">Seus planos personalizados</h2>
-              
-              <Tabs 
-                defaultValue={activeTab} 
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as ActiveTab)}
-              >
-                <TabsList className="mb-4">
-                  <TabsTrigger value={ActiveTab.Meal} disabled={!hasMealProduct()}>
-                    <IconList className="mr-2" />
-                    Plano Alimentar
-                  </TabsTrigger>
-                  <TabsTrigger value={ActiveTab.Workout} disabled={!hasWorkoutProduct()}>
-                    <IconActivity className="mr-2" />
-                    Plano de Treino
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value={ActiveTab.Meal}>
-                  {renderAvailablePlans()}
-                </TabsContent>
-                
-                <TabsContent value={ActiveTab.Workout}>
-                  {renderAvailablePlans()}
-                </TabsContent>
-              </Tabs>
-            </div>
-          </>
-        )}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Seus planos personalizados</h2>
+          
+          <Tabs 
+            defaultValue={activeTab} 
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as ActiveTab)}
+          >
+            <TabsList className="mb-4">
+              <TabsTrigger value={ActiveTab.Meal} disabled={!hasMealProduct()}>
+                <IconList className="mr-2" />
+                Plano Alimentar
+              </TabsTrigger>
+              <TabsTrigger value={ActiveTab.Workout} disabled={!hasWorkoutProduct()}>
+                <IconActivity className="mr-2" />
+                Plano de Treino
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={ActiveTab.Meal}>
+              {renderAvailablePlans()}
+            </TabsContent>
+            
+            <TabsContent value={ActiveTab.Workout}>
+              {renderAvailablePlans()}
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
       <Footer />
     </motion.div>

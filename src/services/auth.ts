@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import Cookies from 'js-cookie'
 import { User } from '../types/user'
+import { syncAuthToken } from '@/lib/supabaseClient'
 
 const COOKIE_OPTIONS = {
   secure: import.meta.env.PROD, // Secure em produção
@@ -19,6 +20,12 @@ const setAuthCookies = (session: any) => {
   console.log('Configurando cookies de autenticação', { domain: COOKIE_OPTIONS.domain, sameSite: COOKIE_OPTIONS.sameSite });
   Cookies.set('access_token', session.access_token, COOKIE_OPTIONS)
   Cookies.set('refresh_token', session.refresh_token, COOKIE_OPTIONS)
+  
+  // Armazenar token no localStorage para sincronização com hooks
+  localStorage.setItem('token', session.access_token)
+  
+  // Sincronizar tokens com o supabaseClient
+  syncAuthToken()
 }
 
 /**
@@ -28,6 +35,7 @@ const clearAuthCookies = () => {
   console.log('Removendo cookies de autenticação');
   Cookies.remove('access_token', { domain: COOKIE_OPTIONS.domain })
   Cookies.remove('refresh_token', { domain: COOKIE_OPTIONS.domain })
+  localStorage.removeItem('token')
 }
 
 /**
@@ -133,7 +141,9 @@ export const registerUser = async (
         telefone: userData.telefone,
         email: email,
         status_geral: 'ativo',
-        is_admin: false
+        is_admin: false,
+        formulario_alimentar_preenchido: false,
+        formulario_treino_preenchido: false
       })
       
     if (profileError) {
@@ -174,6 +184,7 @@ export const logout = async () => {
  */
 export const getUserProfile = async (userId: string) => {
   try {
+    // Primeiro, buscamos o perfil básico
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -185,6 +196,18 @@ export const getUserProfile = async (userId: string) => {
       return null
     }
     
+    // Depois, buscamos também o status dos formulários para complementar
+    const { data: statusData, error: statusError } = await supabase
+      .from('user_status')
+      .select('alimentar_completed, treino_completed')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (statusError) {
+      console.warn('Erro ao buscar status dos formulários:', statusError)
+    }
+    
+    // Combina os dados do perfil com o status dos formulários
     return {
       id: data.id,
       nome: data.nome || 'Usuário',
@@ -193,7 +216,10 @@ export const getUserProfile = async (userId: string) => {
       status: data.status_geral || 'ativo',
       is_admin: data.is_admin || false,
       formulario_alimentar_preenchido: data.formulario_alimentar_preenchido || false,
-      formulario_treino_preenchido: data.formulario_treino_preenchido || false
+      formulario_treino_preenchido: data.formulario_treino_preenchido || false,
+      // Adiciona os campos de formulários do user_status se disponíveis
+      alimentar_completed: statusData?.alimentar_completed || false,
+      treino_completed: statusData?.treino_completed || false
     } as User
   } catch (error) {
     console.error('Erro ao buscar perfil:', error)
@@ -212,13 +238,38 @@ export const updateUserProfile = async (userId: string, data: Partial<User>) => 
         nome: data.nome,
         telefone: data.telefone,
         email: data.email,
-        status_geral: data.status
+        status_geral: data.status,
+        formulario_alimentar_preenchido: data.formulario_alimentar_preenchido,
+        formulario_treino_preenchido: data.formulario_treino_preenchido
       })
       .eq('id', userId)
       
     if (error) {
       console.error('Erro ao atualizar perfil:', error)
       return { success: false, error: error.message }
+    }
+    
+    // Se temos dados de formulários, atualizamos também na tabela de status
+    if (data.alimentar_completed !== undefined || data.treino_completed !== undefined) {
+      const updateData: any = {};
+      
+      if (data.alimentar_completed !== undefined) {
+        updateData.alimentar_completed = data.alimentar_completed;
+      }
+      
+      if (data.treino_completed !== undefined) {
+        updateData.treino_completed = data.treino_completed;
+      }
+      
+      const { error: statusError } = await supabase
+        .from('user_status')
+        .update(updateData)
+        .eq('user_id', userId);
+        
+      if (statusError) {
+        console.error('Erro ao atualizar status dos formulários:', statusError);
+        return { success: false, error: statusError.message };
+      }
     }
     
     return { success: true }
@@ -251,7 +302,7 @@ export const checkPhoneExists = async (phone: string) => {
     }
   } catch (error) {
     console.error('Erro ao verificar telefone:', error)
-    return { exists: false, status: null }
+    return { exists: false, status: null, userId: null }
   }
 }
 
