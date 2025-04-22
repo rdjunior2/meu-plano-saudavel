@@ -22,52 +22,35 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Aumentando o limite de aviso para chunks grandes
     chunkSizeWarningLimit: 1000,
+    // Configuração para melhorar compatibilidade
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        // Evitar problemas com nomes de referências
+        keep_fnames: true,
+        keep_classnames: true
+      }
+    },
     // Configuração de saída para melhorar o code splitting
     rollupOptions: {
       output: {
-        // Estratégia de chunking para dividir o código em partes menores
-        manualChunks: (id) => {
-          // Separa React e React DOM
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react-vendor';
-          }
-          
-          // Separa React Router
-          if (id.includes('react-router')) {
-            return 'react-router';
-          }
-          
-          // Bibliotecas de formulários
-          if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform/resolvers')) {
-            return 'forms';
-          }
-          
-          // Supabase
-          if (id.includes('@supabase/')) {
-            return 'supabase';
-          }
-          
-          // TanStack Query
-          if (id.includes('@tanstack/')) {
-            return 'tanstack';
-          }
-          
-          // Bibliotecas de utilidades
-          if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
-            return 'utils';
-          }
-          
-          // Componentes e páginas da aplicação ficam em chunks separados
-          if (id.includes('/src/components/') && !id.includes('index')) {
-            return 'components';
-          }
-          
-          if (id.includes('/src/pages/') && !id.includes('index')) {
-            return 'pages';
-          }
+        // Estratégia simples de chunking
+        manualChunks: {
+          vendor: [
+            'react', 
+            'react-dom',
+            'react-router-dom'
+          ],
+          // Inclua todos os componentes radix em um único chunk
+          radix: Object.keys(require('./package.json').dependencies)
+            .filter(pkg => pkg.startsWith('@radix-ui/')),
         }
       },
     },
+  },
+  // Desativa a minimização com esbuild para evitar problemas
+  esbuild: {
+    minifyIdentifiers: false
   },
   test: {
     globals: true,
