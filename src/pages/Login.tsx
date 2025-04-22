@@ -88,12 +88,20 @@ const Login = () => {
       
       setIsResetLoading(true);
       
-      // Log para verificar as configurações do Supabase
-      console.log('[PasswordReset] Usando cliente Supabase com URL:', import.meta.env.VITE_SUPABASE_URL || 'usando URL padrão');
+      // Determinar a URL de redirecionamento apropriada
+      // Usar a origem atual para funcionamento em desenvolvimento e produção
+      const url = window.location.origin;
+      const redirectUrl = `${url}/reset-password`;
+      
+      console.log('[PasswordReset] Enviando email de recuperação', { 
+        email,
+        redirectUrl,
+        origin: window.location.origin
+      });
       
       // Chamada para o Supabase para iniciar o processo de recuperação de senha
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
+        redirectTo: redirectUrl,
       });
       
       if (error) {
