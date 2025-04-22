@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "backup": "node -e \"const fs=require('fs');const path=require('path');const backupDir=path.join(__dirname,'..','backups');if(!fs.existsSync(backupDir)){fs.mkdirSync(backupDir,{recursive:true})};const cp=require('child_process');const date=new Date();const timestamp=`${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;const backupPath=path.join(backupDir,`projeto_backup_${timestamp}.zip`);console.log(`Criando backup em: ${backupPath}`);cp.execSync(`tar -cf ${backupPath} --exclude=node_modules --exclude=.git .`,{stdio:'inherit'});console.log('Backup concluído com sucesso!');\"",
+    "backup": "node src/scripts/backup.js",
+    "backup:db": "node src/scripts/backup-db.js",
+    "backup:all": "npm run backup && npm run backup:db",
     "test": "vitest",
     "test:run": "vitest run"
   },

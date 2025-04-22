@@ -25,7 +25,7 @@ import HistoricoCompras from "./pages/HistoricoCompras";
 import UserProfile from "./pages/UserProfile";
 import { logEvent, LogSeverity } from "./services/logs";
 import ResetPassword from "./pages/ResetPassword";
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 
 const queryClient = new QueryClient();
@@ -138,58 +138,14 @@ const isPublicRoute = (pathname: string) => {
   return publicRoutes.includes(pathname);
 };
 
-// Componente para rotas protegidas
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+// Componente para rotas protegidas de admin
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAuthContext();
+  const user = useAuthStore((state) => state.user);
   const location = useLocation();
-
-  useEffect(() => {
-    // Prevenção contra ataques XSS: sanitiza parâmetros da URL
-    const params = new URLSearchParams(location.search);
-    
-    // Lista de parâmetros sensíveis que não devem estar na URL
-    const sensitiveParams = ['token', 'key', 'password', 'senha'];
-    
-    let hasSensitiveParams = false;
-    sensitiveParams.forEach(param => {
-      if (params.has(param)) {
-        hasSensitiveParams = true;
-        console.error(`Parâmetro sensível detectado na URL: ${param}`);
-        
-        // Registrar tentativa suspeita
-        logEvent(
-          'security_warning',
-          `Parâmetro sensível detectado na URL: ${param}`,
-          LogSeverity.WARNING,
-          { path: location.pathname }
-        );
-      }
-    });
-    
-    // Se encontrou parâmetros sensíveis, limpa-os da URL
-    if (hasSensitiveParams) {
-      window.history.replaceState(
-        {}, 
-        document.title, 
-        location.pathname
-      );
-    }
-  }, [location]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
-  return <>{children}</>;
-};
-
-// Componente para rotas protegidas de admin
-const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const user = useAuthStore((state) => state.user);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
   }
 
   if (!user?.is_admin) {
@@ -225,39 +181,39 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/create-admin" element={<CreateAdmin />} />
                   <Route path="/anamnese" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <Anamnese />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/dashboard" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <Dashboard />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/plano/:id" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <PlanoDetalhes />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/formulario-alimentar" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <FormularioAlimentar />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/formulario-treino" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <FormularioTreino />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/perfil" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <UserProfile />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/historico-compras" element={
-                    <ProtectedRoute>
+                    <PrivateRoute>
                       <HistoricoCompras />
-                    </ProtectedRoute>
+                    </PrivateRoute>
                   } />
                   <Route path="/admin" element={
                     <AdminRoute>

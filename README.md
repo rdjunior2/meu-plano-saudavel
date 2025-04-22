@@ -74,12 +74,32 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-trick
 
 ## Como fazer backup do projeto
 
-Para realizar um backup completo do projeto, basta executar o seguinte comando:
+Para realizar backups do projeto, você tem as seguintes opções:
+
+### Backup dos arquivos do projeto
 
 ```sh
 npm run backup
 ```
 
-Este comando criará um arquivo zip contendo todos os arquivos do projeto (exceto os diretórios node_modules e .git) no diretório `../backups`. O nome do arquivo seguirá o formato `projeto_backup_AAAAMMDD_HHMMSS.zip`, onde AAAA é o ano, MM é o mês, DD é o dia, HH é a hora, MM é o minuto e SS é o segundo da criação do backup.
+Este comando criará um arquivo zip contendo todos os arquivos do projeto (exceto node_modules, dist, .git e outros diretórios temporários) no diretório `backups` na raiz do projeto. O nome do arquivo seguirá o formato `backup_AAAA-MM-DD_HH-MM.zip`.
 
-O backup é uma boa prática para preservar o estado atual do projeto e pode ser usado para restaurar o projeto em caso de problemas.
+### Backup do banco de dados Supabase
+
+```sh
+npm run backup:db
+```
+
+Este comando fará um backup das migrações do Supabase e tentará exportar os metadados do banco de dados (requer Supabase CLI). Os arquivos serão salvos no diretório `backups/database`.
+
+### Backup completo (arquivos + banco de dados)
+
+```sh
+npm run backup:all
+```
+
+Este comando executará tanto o backup dos arquivos quanto o backup do banco de dados em sequência.
+
+O backup é uma boa prática para preservar o estado atual do projeto e pode ser usado para restaurar o projeto em caso de problemas ou para transferir o projeto para outro ambiente.
+
+Para restaurar um backup de arquivos, basta descompactar o arquivo zip em um diretório vazio e executar `npm install` para reinstalar as dependências.
