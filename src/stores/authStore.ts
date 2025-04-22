@@ -57,7 +57,7 @@ interface AuthState {
   setIsAuthenticated: (value: boolean) => void;
   updateUser: (data: Partial<User>) => Promise<{success: boolean, error?: string}>;
   checkUserByPhone: (phone: string) => Promise<{exists: boolean, status: string | null, userId: string | null}>;
-  loginWithEmail: (email: string, password: string) => Promise<{success: boolean, user?: User, error?: string}>;
+  loginWithEmail: (email: string, password: string) => Promise<{success: boolean, user?: User, error?: string, session?: any}>;
   registerWithEmail: (email: string, password: string, userData: Partial<User>) => Promise<{success: boolean, user?: User, error?: string, warning?: string}>;
 }
 

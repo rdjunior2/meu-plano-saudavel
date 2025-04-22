@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -9,8 +9,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Mail, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { logEvent, LogSeverity } from '../services/logs';
+import { debugAuthState, fixAuthIssues } from '../utils/authDebug';
 
 const loginSchema = z.object({
   email: z.string()
@@ -24,7 +27,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginWithEmail } = useAuthStore();
+  const { login: contextLogin } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
   
@@ -36,17 +41,28 @@ const Login = () => {
     },
   });
 
+  // Verificar se o usuário já está autenticado
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      console.log('[Login] Token encontrado no localStorage, redirecionando para dashboard');
+      navigate('/dashboard');
+    }
+  }, [navigate]);
+
   const onSubmit = async (values: LoginFormValues) => {
     try {
       setIsLoading(true);
       
       console.log('[Login] Tentando fazer login com email:', values.email);
+      logEvent('auth_attempt', 'Tentativa de login', LogSeverity.INFO, { email: values.email });
       
       // Tentar fazer login com email
-      const { success, error, user } = await loginWithEmail(values.email, values.password);
+      const { success, error, user, session } = await loginWithEmail(values.email, values.password);
       
       if (!success) {
         console.error('[Login] Falha no login:', error);
+        logEvent('auth_failed', 'Falha no login', LogSeverity.WARNING, { error });
         toast.error(error || "Erro ao realizar login. Verifique seus dados.");
         
         // Exibir informações adicionais para depuração
@@ -57,12 +73,46 @@ const Login = () => {
         return;
       }
       
-      console.log('[Login] Login realizado com sucesso, redirecionando para /dashboard');
+      // Sucesso no login
+      console.log('[Login] Login realizado com sucesso, dados:', { user, hasSession: !!session });
+      
+      // Garantir que o token está salvo no localStorage
+      if (session?.access_token) {
+        localStorage.setItem("token", session.access_token);
+        // Atualizar também o AuthContext
+        contextLogin(session.access_token);
+      }
+      
+      // Verificar token após login
+      const tokenAfterLogin = localStorage.getItem("token");
+      console.log('[Login] Token após login:', !!tokenAfterLogin);
+      
+      logEvent('auth_success', 'Login realizado com sucesso', LogSeverity.INFO, { 
+        user_id: user?.id,
+        hasToken: !!tokenAfterLogin
+      });
+      
       toast.success("Login realizado com sucesso!");
-      navigate("/dashboard");
+      
+      // Verificar e corrigir possíveis problemas de autenticação
+      try {
+        await fixAuthIssues();
+      } catch (authFixError) {
+        console.error('[Login] Erro ao verificar autenticação:', authFixError);
+      }
+      
+      // Usar from do state ou redirecionar para dashboard
+      const from = (location.state as any)?.from?.pathname || "/dashboard";
+      console.log('[Login] Redirecionando para:', from);
+      
+      // Aguardar um pouco para garantir que o estado de autenticação seja atualizado
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 100);
       
     } catch (error: any) {
       console.error('[Login] Erro não tratado durante o login:', error);
+      logEvent('auth_error', 'Erro durante o login', LogSeverity.ERROR, { error: error?.message });
       const errorMessage = error?.message || "Erro ao realizar login. Tente novamente.";
       toast.error(errorMessage);
     } finally {

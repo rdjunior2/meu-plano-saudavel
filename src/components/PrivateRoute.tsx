@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useAuthStore } from '../stores/authStore';
 import { logEvent, LogSeverity } from '../services/logs';
+import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Interface para as propriedades do componente PrivateRoute
@@ -26,21 +27,57 @@ const PrivateRoute = ({
   const { isAuthenticated: authContextAuthenticated, isLoading: authContextLoading } = useAuthContext();
   const authStoreAuthenticated = useAuthStore(state => state.isAuthenticated);
   const [isVerifying, setIsVerifying] = useState(true);
+  const [isTokenVerified, setIsTokenVerified] = useState(false);
   const location = useLocation();
 
-  // Combinando os resultados das duas fontes de autenticação
-  const isAuthenticated = authContextAuthenticated || authStoreAuthenticated;
-  const isLoading = authContextLoading || isVerifying;
-
-  // Verificação adicional com token no localStorage
+  // Verificação adicional do token e sessão
   useEffect(() => {
-    const verifyAuth = () => {
-      // Apenas verificamos a existência do token e finalizamos a verificação
-      setIsVerifying(false);
+    const verifyAuth = async () => {
+      try {
+        // Verificar token no localStorage
+        const token = localStorage.getItem("token");
+        
+        if (token) {
+          // Verificar se o token é válido consultando a sessão
+          const { data } = await supabase.auth.getSession();
+          
+          if (data.session) {
+            logEvent('auth_check', 'Verificação de autenticação bem-sucedida', LogSeverity.INFO, { 
+              path: location.pathname,
+              hasValidSession: true
+            });
+            setIsTokenVerified(true);
+          } else {
+            logEvent('auth_warning', 'Token encontrado, mas sessão inválida', LogSeverity.WARNING, { 
+              path: location.pathname
+            });
+            setIsTokenVerified(false);
+          }
+        } else {
+          // Sem token no localStorage
+          logEvent('auth_check', 'Token não encontrado', LogSeverity.INFO, { 
+            path: location.pathname
+          });
+          setIsTokenVerified(false);
+        }
+      } catch (error) {
+        console.error('[PrivateRoute] Erro ao verificar token:', error);
+        logEvent('auth_error', 'Erro ao verificar autenticação', LogSeverity.ERROR, { 
+          path: location.pathname,
+          error
+        });
+        setIsTokenVerified(false);
+      } finally {
+        setIsVerifying(false);
+      }
     };
     
     verifyAuth();
-  }, []);
+  }, [location.pathname]);
+
+  // Combinando os resultados das três fontes de autenticação
+  const isAuthenticated = authContextAuthenticated || authStoreAuthenticated || isTokenVerified;
+  const isLoading = authContextLoading || isVerifying;
 
   // Verificação de parâmetros sensíveis na URL (prevenção contra XSS)
   useEffect(() => {
@@ -81,8 +118,24 @@ const PrivateRoute = ({
     return <>{loadingComponent}</>;
   }
 
+  // Log de diagnóstico
+  console.log('[PrivateRoute] Estado de autenticação:', { 
+    authContextAuthenticated, 
+    authStoreAuthenticated,
+    isTokenVerified,
+    isAuthenticated,
+    path: location.pathname
+  });
+
   // Redireciona para a página de login se não estiver autenticado
-  return isAuthenticated ? <>{children}</> : <Navigate to={redirectPath} replace state={{ from: location }} />;
+  if (!isAuthenticated) {
+    logEvent('auth_redirect', 'Redirecionando para página de login', LogSeverity.INFO, { 
+      from: location.pathname
+    });
+    return <Navigate to={redirectPath} replace state={{ from: location }} />;
+  }
+  
+  return <>{children}</>;
 };
 
 export default PrivateRoute; 

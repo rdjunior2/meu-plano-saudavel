@@ -4,47 +4,87 @@ import { supabase } from '@/lib/supabaseClient'
  * Níveis de severidade para logs
  */
 export enum LogSeverity {
+  DEBUG = 'debug',
   INFO = 'info',
   WARNING = 'warning',
   ERROR = 'error',
-  CRITICAL = 'critical'
+  FATAL = 'fatal'
 }
 
 /**
- * Loga eventos do sistema na tabela de logs
+ * Registra um evento no sistema de logs
+ * @param eventName Nome do evento
+ * @param message Mensagem descritiva
+ * @param severity Nível de severidade
+ * @param metadata Dados adicionais
  */
-export const logEvent = async (
-  event: string,
-  description: string,
+export const logEvent = (
+  eventName: string,
+  message: string,
   severity: LogSeverity = LogSeverity.INFO,
-  metadata: any = {}
+  metadata: Record<string, any> = {}
 ) => {
-  try {
-    const { error } = await supabase
-      .from('log_agente_automacao')
-      .insert({
-        evento: event,
-        descricao: description,
-        severidade: severity,
-        metadata: metadata,
-        timestamp: new Date().toISOString()
-      })
-    
-    if (error) {
-      console.error('Erro ao registrar log:', error)
-      // Se falhar ao registrar no banco, ao menos registra no console
-      console.error('Log original:', { event, description, severity, metadata })
-      return false
-    }
-    
-    return true
-  } catch (error) {
-    console.error('Erro ao registrar log:', error)
-    // Se falhar ao registrar no banco, ao menos registra no console
-    console.error('Log original:', { event, description, severity, metadata })
-    return false
+  // Criar objeto de log
+  const logData = {
+    event: eventName,
+    message,
+    severity,
+    timestamp: new Date().toISOString(),
+    ...metadata
+  };
+
+  // No ambiente de desenvolvimento, exibe no console
+  if (import.meta.env.DEV) {
+    const consoleMethod = {
+      [LogSeverity.DEBUG]: console.debug,
+      [LogSeverity.INFO]: console.info,
+      [LogSeverity.WARNING]: console.warn,
+      [LogSeverity.ERROR]: console.error,
+      [LogSeverity.FATAL]: console.error
+    }[severity] || console.log;
+
+    consoleMethod(`[${severity.toUpperCase()}] ${eventName}: ${message}`, metadata);
   }
-}
+
+  // Em produção, poderia enviar para um serviço de monitoramento
+  if (import.meta.env.PROD) {
+    try {
+      // Salvar log em arquivo (em produção, isto seria enviado para um serviço externo)
+      const logs = JSON.parse(localStorage.getItem('app_logs') || '[]');
+      logs.push(logData);
+      
+      // Manter apenas os últimos 100 logs
+      if (logs.length > 100) {
+        logs.shift();
+      }
+      
+      localStorage.setItem('app_logs', JSON.stringify(logs));
+    } catch (error) {
+      console.error('Erro ao salvar log:', error);
+    }
+  }
+  
+  return logData;
+};
+
+/**
+ * Recupera os logs armazenados
+ */
+export const getLogs = () => {
+  try {
+    return JSON.parse(localStorage.getItem('app_logs') || '[]');
+  } catch (error) {
+    console.error('Erro ao recuperar logs:', error);
+    return [];
+  }
+};
+
+/**
+ * Limpa todos os logs armazenados
+ */
+export const clearLogs = () => {
+  localStorage.removeItem('app_logs');
+};
 
 /**
  * Registra um erro crítico e envia notificação
@@ -60,7 +100,7 @@ export const logCriticalError = async (
     const logged = await logEvent(
       event,
       description,
-      LogSeverity.CRITICAL,
+      LogSeverity.FATAL,
       metadata
     )
     
@@ -77,7 +117,7 @@ export const logCriticalError = async (
           body: JSON.stringify({
             event,
             description,
-            severity: LogSeverity.CRITICAL,
+            severity: LogSeverity.FATAL,
             timestamp: new Date().toISOString(),
             metadata
           })
