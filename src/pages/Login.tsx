@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useAuthStore } from '@/stores/authStore';
 import { Mail, Lock } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 const loginSchema = z.object({
   email: z.string()
@@ -25,6 +26,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { loginWithEmail } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetLoading, setIsResetLoading] = useState(false);
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -65,6 +67,44 @@ const Login = () => {
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      const email = form.getValues("email");
+      
+      if (!email) {
+        toast.error("Por favor, digite seu email primeiro.");
+        return;
+      }
+      
+      // Validar o email
+      const emailResult = z.string().email().safeParse(email);
+      if (!emailResult.success) {
+        toast.error("Por favor, digite um email válido.");
+        return;
+      }
+      
+      setIsResetLoading(true);
+      
+      // Chamada para o Supabase para iniciar o processo de recuperação de senha
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://meu-plano-saudavel.vercel.app/reset-password',
+      });
+      
+      if (error) {
+        console.error('[PasswordReset] Erro ao enviar email de recuperação:', error);
+        toast.error(error.message || "Erro ao enviar o email de recuperação.");
+        return;
+      }
+      
+      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+    } catch (error) {
+      console.error('[PasswordReset] Erro:', error);
+      toast.error("Ocorreu um erro. Tente novamente mais tarde.");
+    } finally {
+      setIsResetLoading(false);
     }
   };
 
@@ -120,6 +160,18 @@ const Login = () => {
               <Button type="submit" className="w-full bg-lavender hover:bg-lavender-dark" disabled={isLoading}>
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
+              
+              <div className="flex justify-center pt-2">
+                <Button 
+                  variant="link"
+                  type="button"
+                  className="text-sm text-lavender-dark hover:text-lavender"
+                  onClick={handlePasswordReset}
+                  disabled={isResetLoading}
+                >
+                  {isResetLoading ? "Enviando..." : "Esqueceu sua senha?"}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

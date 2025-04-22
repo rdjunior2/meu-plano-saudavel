@@ -24,6 +24,7 @@ import CreateAdmin from "./pages/CreateAdmin";
 import HistoricoCompras from "./pages/HistoricoCompras";
 import UserProfile from "./pages/UserProfile";
 import { logEvent, LogSeverity } from "./services/logs";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -131,7 +132,7 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
 
 // Verifica se a rota é pública (não requer autenticação)
 const isPublicRoute = (pathname: string) => {
-  const publicRoutes = ['/', '/login', '/register', '/criar-senha'];
+  const publicRoutes = ['/', '/login', '/register', '/criar-senha', '/reset-password'];
   return publicRoutes.includes(pathname);
 };
 
@@ -218,6 +219,7 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/criar-senha" element={<CriarSenha />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/create-admin" element={<CreateAdmin />} />
                 <Route path="/anamnese" element={
                   <ProtectedRoute>
