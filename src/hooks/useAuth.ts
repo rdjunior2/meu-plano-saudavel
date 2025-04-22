@@ -14,9 +14,6 @@ const useAuth = () => {
     try {
       setIsLoading(true);
       
-      // Primeiro definimos como não autenticado por padrão
-      setIsAuthenticated(false);
-      
       // Verificar token no localStorage (método rápido)
       const token = localStorage.getItem("token");
       
@@ -32,6 +29,8 @@ const useAuth = () => {
         if (hasValidSession && !token) {
           localStorage.setItem("token", data.session.access_token);
         }
+      } else {
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('[useAuth] Erro ao verificar autenticação:', error);
@@ -39,7 +38,7 @@ const useAuth = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setIsAuthenticated, setIsLoading]);
 
   // Verificar autenticação ao inicializar o hook
   useEffect(() => {
@@ -47,10 +46,16 @@ const useAuth = () => {
     
     // Configurar listener para mudanças de autenticação
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[useAuth] Evento de autenticação:', event);
       if (event === 'SIGNED_IN' && session) {
+        localStorage.setItem("token", session.access_token);
         setIsAuthenticated(true);
       } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem("token");
         setIsAuthenticated(false);
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        localStorage.setItem("token", session.access_token);
+        setIsAuthenticated(true);
       }
     });
     
@@ -63,19 +68,22 @@ const useAuth = () => {
   // Função para realizar logout
   const logout = async () => {
     try {
+      setIsLoading(true);
       await supabase.auth.signOut();
       localStorage.removeItem("token");
       setIsAuthenticated(false);
     } catch (error) {
       console.error('[useAuth] Erro ao fazer logout:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Função para realizar login
-  const login = (token: string) => {
+  const login = useCallback((token: string) => {
     localStorage.setItem("token", token);
     setIsAuthenticated(true);
-  };
+  }, [setIsAuthenticated]);
 
   return { 
     isAuthenticated, 

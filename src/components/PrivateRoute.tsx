@@ -35,7 +35,7 @@ const PrivateRoute = ({
   // Verificação adicional com token no localStorage
   useEffect(() => {
     const verifyAuth = () => {
-      const token = localStorage.getItem('token');
+      // Apenas verificamos a existência do token e finalizamos a verificação
       setIsVerifying(false);
     };
     

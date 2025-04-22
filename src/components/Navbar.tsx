@@ -31,20 +31,14 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar'
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout: logoutFn } = useAuthStore();
+  const { user, logout: logoutFn } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // Verificação dupla para garantir que componente não renderize em páginas de autenticação
-  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/reset-password') {
-    return null;
-  }
-  
-  // Verificação de autenticação - se não estiver autenticado, não renderize o Navbar
-  if (!isAuthenticated) {
+  // Verificação apenas para páginas de autenticação
+  if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/reset-password' || location.pathname === '/criar-senha') {
     return null;
   }
 
@@ -151,7 +145,7 @@ const Navbar = () => {
                 className="px-7 py-2 text-base hover:underline"
                 to="/formulario-alimentar"
               >
-                <Apple className="h-4 w-4" />
+                <Apple className="h-4 w-4 inline-block mr-1" />
                 Formulário Alimentar
               </Link>
               <Link
@@ -159,7 +153,7 @@ const Navbar = () => {
                 className="px-7 py-2 text-base hover:underline"
                 to="/formulario-treino"
               >
-                <Dumbbell className="h-4 w-4" />
+                <Dumbbell className="h-4 w-4 inline-block mr-1" />
                 Formulário Treino
               </Link>
               <Link
@@ -167,7 +161,7 @@ const Navbar = () => {
                 className="px-7 py-2 text-base hover:underline"
                 to="/historico-compras"
               >
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-4 w-4 inline-block mr-1" />
                 Compras
               </Link>
               <Link
@@ -175,7 +169,7 @@ const Navbar = () => {
                 className="px-7 py-2 text-base hover:underline"
                 to="/perfil"
               >
-                <User className="h-4 w-4" />
+                <User className="h-4 w-4 inline-block mr-1" />
                 Perfil
               </Link>
               {user?.is_admin && (
@@ -184,7 +178,7 @@ const Navbar = () => {
                   className="px-7 py-2 text-base hover:underline"
                   to="/admin"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4 inline-block mr-1" />
                   Admin
                 </Link>
               )}
@@ -197,7 +191,7 @@ const Navbar = () => {
                   setOpen(false);
                 }}
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4 mr-1" />
                 Sair
               </Button>
             </div>

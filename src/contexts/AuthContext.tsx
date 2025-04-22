@@ -21,13 +21,20 @@ interface AuthProviderProps {
  * Provedor do contexto de autenticação
  */
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  // Usar useMemo para estabilizar o valor do contexto e evitar renderizações desnecessárias
+  // Usar o hook useAuth para gestão de autenticação
   const auth = useAuth();
   
   // Memorizando o valor do contexto para evitar recriações desnecessárias
-  const value = useMemo(() => auth, [
+  const value = useMemo(() => ({
+    isAuthenticated: auth.isAuthenticated,
+    isLoading: auth.isLoading,
+    login: auth.login,
+    logout: auth.logout
+  }), [
     auth.isAuthenticated,
-    auth.isLoading
+    auth.isLoading,
+    auth.login,
+    auth.logout
   ]);
 
   return (

@@ -25,8 +25,6 @@ import {
   ProductType, 
   FormStatus as ApiFormStatus
 } from '../integrations/supabase/types';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { IconActivity, IconList, IconClock, IconAlertCircle, IconClipboardCheck, IconHourglass } from '../components/ui/icons';
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
@@ -701,7 +699,6 @@ const Dashboard: React.FC = () => {
       transition={{ duration: 0.5 }}
       className="min-h-screen flex flex-col"
     >
-      <Navbar />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">
@@ -745,7 +742,6 @@ const Dashboard: React.FC = () => {
           </Tabs>
         </div>
       </main>
-      <Footer />
     </motion.div>
   );
 };
