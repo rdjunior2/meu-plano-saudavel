@@ -88,9 +88,12 @@ const Login = () => {
       
       setIsResetLoading(true);
       
+      // Log para verificar as configurações do Supabase
+      console.log('[PasswordReset] Usando cliente Supabase com URL:', import.meta.env.VITE_SUPABASE_URL || 'usando URL padrão');
+      
       // Chamada para o Supabase para iniciar o processo de recuperação de senha
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://meu-plano-saudavel.vercel.app/reset-password',
+        redirectTo: window.location.origin + '/reset-password',
       });
       
       if (error) {
