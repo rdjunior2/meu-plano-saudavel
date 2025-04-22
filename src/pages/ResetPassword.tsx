@@ -490,7 +490,7 @@ export default function ResetPassword() {
           )}
           
           {/* Exibir informações adicionais sobre como resolver o problema */}
-          {invalidLink && !import.meta.env.PROD && (
+          {invalidLink && import.meta.env.DEV && (
             <Alert className="mb-6 bg-blue-50 border-blue-200">
               <AlertTitle className="text-blue-700">Informações adicionais</AlertTitle>
               <AlertDescription className="text-blue-600 text-sm">

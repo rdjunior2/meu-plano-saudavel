@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { FormStatus, PlanStatus } from '@/integrations/supabase/types';
 import { useNotificationStore } from './notificationStore';
 

@@ -182,9 +182,9 @@ const AppContent = () => {
 
   return (
     <>
-      <AuthDebugHelper />
       {showNavbar && <Navbar />}
       <div className="min-h-screen flex flex-col">
+        {import.meta.env.DEV && <AuthDebugHelper />}
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
