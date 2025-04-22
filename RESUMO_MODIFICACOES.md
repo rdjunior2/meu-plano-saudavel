@@ -10,10 +10,15 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - ✅ Implementado logout automático quando a sessão expirar.
 - ✅ Criada proteção contra XSS na URL, removendo parâmetros sensíveis.
 - ✅ Todas as rotas protegidas com redirecionamento condicional.
+- ✅ Corrigido o fluxo de recuperação de senha para processar corretamente os tokens da URL.
+- ✅ Implementada validação da sessão com `supabase.auth.getUser()` antes de permitir redefinição de senha.
 
 ## 2. Organização e Padronização
 
 - ✅ Criado o arquivo `supabaseClient.ts` centralizado usando tipos `Database`.
+- ✅ Removidas instâncias duplicadas do cliente Supabase, mantendo apenas em `@/lib/supabaseClient.ts`.
+- ✅ Padronizadas as importações com path alias `@/` em todos os arquivos.
+- ✅ Atualizada a ANON_KEY para a versão mais recente e válida.
 - ✅ Implementada pasta `/services/` com funções que encapsulam chamadas à API:
   - `auth.ts`: Funções de autenticação
   - `users.ts`: Funções de gerenciamento de usuários
@@ -61,6 +66,7 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - `src/tests/auth.test.ts`
 - `src/tests/setup.ts`
 - `supabase/migrations/20240716_add_foreign_key_constraints.sql`
+- `CHANGELOG.md`
 
 ### Arquivos Modificados
 - `src/App.tsx`
@@ -69,6 +75,19 @@ Este documento lista todas as modificações realizadas no projeto para atender 
 - `supabase/functions/webhook-kiwify/index.ts`
 - `package.json`
 - `vite.config.ts`
+- `src/integrations/supabase/client.ts`
+- `src/pages/CreateAdmin.tsx`
+- `src/pages/Login.tsx`
+- `src/pages/ResetPassword.tsx`
+- `src/services/auth.ts`
+- `src/services/forms.ts`
+- `src/services/logs.ts`
+- `src/services/purchases.ts`
+- `src/services/users.ts`
+- `src/tests/auth.test.ts`
+
+### Arquivos Removidos
+- `src/lib/supabase.ts`
 
 ## Próximos Passos Recomendados
 
