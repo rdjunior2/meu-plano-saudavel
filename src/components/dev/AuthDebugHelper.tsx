@@ -8,6 +8,7 @@ import { logEvent, LogSeverity } from '@/services/logs';
 /**
  * Componente invisível que verifica e corrige problemas de autenticação
  * Deve ser adicionado uma única vez no componente App principal
+ * APENAS PARA AMBIENTE DE DESENVOLVIMENTO
  */
 const AuthDebugHelper = () => {
   const navigate = useNavigate();
