@@ -14,7 +14,8 @@ export enum PlanStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
-  READY = 'ready'
+  READY = 'ready',
+  ACTIVE = 'active'
 }
 
 /**

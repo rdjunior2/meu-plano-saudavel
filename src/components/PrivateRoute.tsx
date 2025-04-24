@@ -70,10 +70,15 @@ const PrivateRoute = ({
               });
               
               if (response.ok) {
-                const userProfile = await response.json();
-                if (userProfile) {
-                  // Atualizar authStore com o perfil atualizado
-                  login(userProfile, token);
+                try {
+                  const userProfile = await response.json();
+                  if (userProfile) {
+                    // Atualizar authStore com o perfil atualizado
+                    login(userProfile, token);
+                  }
+                } catch (jsonError) {
+                  console.error('[PrivateRoute] Erro ao analisar JSON do perfil:', jsonError);
+                  // Não bloqueia o fluxo, apenas registra o erro
                 }
               }
             } catch (e) {

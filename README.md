@@ -103,3 +103,46 @@ Este comando executará tanto o backup dos arquivos quanto o backup do banco de 
 O backup é uma boa prática para preservar o estado atual do projeto e pode ser usado para restaurar o projeto em caso de problemas ou para transferir o projeto para outro ambiente.
 
 Para restaurar um backup de arquivos, basta descompactar o arquivo zip em um diretório vazio e executar `npm install` para reinstalar as dependências.
+
+## Correções de Erros
+
+### Erro 404 em endpoints do Supabase
+
+Foi identificado um erro 404 ao acessar a tabela `user_status` e a função RPC `get_user_purchase_status`. Para corrigir esse problema, execute a migração SQL localizada em `src/scripts/migration-create-user-status.sql` no banco de dados do Supabase.
+
+#### Como executar a migração:
+
+1. Acesse o painel de administração do Supabase
+2. Navegue até SQL Editor
+3. Cole o conteúdo do arquivo `src/scripts/migration-create-user-status.sql`
+4. Execute o script
+
+Esta migração irá:
+- Criar a tabela `user_status` para armazenar o status dos formulários preenchidos por cada usuário
+- Criar a função RPC `get_user_purchase_status` para obter estatísticas de compras do usuário
+
+Após executar esta migração, o erro 404 não deve mais ocorrer.
+
+## Instalação
+
+```bash
+npm install
+```
+
+## Execução em desenvolvimento
+
+```bash
+npm run dev
+```
+
+## Build para produção
+
+```bash
+npm run build
+```
+
+## Visualização da build de produção
+
+```bash
+npm run preview
+```

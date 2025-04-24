@@ -203,15 +203,43 @@ export const getUserProfile = async (userId: string) => {
       return null
     }
     
-    // Depois, buscamos também o status dos formulários para complementar
-    const { data: statusData, error: statusError } = await supabase
-      .from('user_status')
-      .select('alimentar_completed, treino_completed')
-      .eq('user_id', userId)
-      .maybeSingle()
+    // Tenta buscar o status dos formulários, mas não falha se a tabela não existir
+    let statusData = null;
+    try {
+      const { data: fetchedStatus, error: statusError } = await supabase
+        .from('user_status')
+        .select('alimentar_completed, treino_completed')
+        .eq('user_id', userId)
+        .maybeSingle()
+      
+      if (!statusError) {
+        statusData = fetchedStatus;
+      } else {
+        console.warn('Status dos formulários não encontrado, criando valores padrão')
+      }
+    } catch (statusFetchError) {
+      console.warn('Erro ao buscar status dos formulários:', statusFetchError)
+    }
     
-    if (statusError) {
-      console.warn('Erro ao buscar status dos formulários:', statusError)
+    // Se a tabela user_status não existe ou não tem dados para esse usuário,
+    // tenta criar um registro para ele
+    if (!statusData) {
+      try {
+        // Criar entrada na tabela de status com valores padrão
+        const { error: createError } = await supabase
+          .from('user_status')
+          .insert({
+            user_id: userId,
+            alimentar_completed: false,
+            treino_completed: false
+          })
+          
+        if (createError && createError.code !== '42P01') { // 42P01 é "tabela não existe"
+          console.warn('Erro ao criar status do usuário:', createError)
+        }
+      } catch (createError) {
+        console.warn('Erro ao criar status do usuário:', createError)
+      }
     }
     
     // Combina os dados do perfil com o status dos formulários

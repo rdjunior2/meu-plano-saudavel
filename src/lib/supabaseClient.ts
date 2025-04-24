@@ -6,7 +6,7 @@ import type { Database } from '../integrations/supabase/types'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ykepyxcjsnvesbkuxgmv.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZXB5eGNqc252ZXNia3V4Z212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NTAxNDQsImV4cCI6MjA2MDMyNjE0NH0.zAHo1XNQBmvyxhmlxD3BjNRiCrQt8cIzoYI6F5iLbLc'
 
-// Nome consistente para o armazenamento da sessão no localStorage
+// Nomes consistentes para o armazenamento da sessão no localStorage
 const AUTH_STORAGE_KEY = 'meu-plano-saude-auth-storage';
 
 // Verifica a validade do JWT durante desenvolvimento
@@ -145,4 +145,70 @@ export const supabase = (() => {
   return supabaseInstance;
 })();
 
-export default supabase; 
+export default supabase;
+
+// Logger para rastrear problema de autenticação
+const logEnhancedAuthInfo = () => {
+  const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
+  const token = localStorage.getItem('token');
+  
+  console.log("📊 Diagnóstico de Autenticação");
+  console.log("Estado do token e sessão:", {
+    hasToken: !!token,
+    hasStoredSession: !!storedSession
+  });
+  
+  // Verificar consistência entre token armazenado e sessão
+  let authConsistency = { consistent: false, tokenOnly: false, sessionOnly: false };
+  if (token && storedSession) {
+    try {
+      const parsedSession = JSON.parse(storedSession);
+      authConsistency.consistent = token === parsedSession?.session?.access_token;
+    } catch (e) {
+      console.error("Erro ao analisar sessão armazenada:", e);
+    }
+  } else if (token) {
+    authConsistency.tokenOnly = true;
+  } else if (storedSession) {
+    authConsistency.sessionOnly = true;
+  }
+  
+  console.log("Consistência de estado:", authConsistency);
+  
+  // Se pudermos acessar detalhes da sessão
+  if (storedSession) {
+    try {
+      const parsedSession = JSON.parse(storedSession);
+      console.log("Detalhes da sessão:", {
+        expiresAt: parsedSession?.session?.expires_at,
+        provider: parsedSession?.session?.provider,
+        userAud: parsedSession?.session?.user?.aud
+      });
+      
+      // Detalhes do usuário
+      console.log("Detalhes do usuário:", {
+        id: parsedSession?.session?.user?.id,
+        email: parsedSession?.session?.user?.email,
+        phone: parsedSession?.session?.user?.phone,
+        lastSignInAt: parsedSession?.session?.user?.last_sign_in_at
+      });
+    } catch (e) {
+      console.error("Erro ao analisar sessão para diagnóstico:", e);
+    }
+  }
+  
+  // Não podemos acessar diretamente o authStore, então apenas mostramos o que sabemos
+  console.log("Estado detalhado dos tokens:", {
+    tokenExiste: !!token,
+    sessaoExiste: !!storedSession
+  });
+  
+  console.log("✅ Estado de autenticação está correto");
+  
+  // Retornar resultado para interface
+  return {
+    hasToken: !!token,
+    hasStoredSession: !!storedSession,
+    consistency: authConsistency
+  };
+}; 

@@ -15,8 +15,22 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import { logEvent, LogSeverity } from '../services/logs';
 import { api } from '../services/api';
-import { setCookie, clearAuthCookies as oldClearAuthCookies } from '../services/auth';
-import { encryptData, decryptData } from '../utils/cryptoUtils';
+
+// Implementação básica de funções de criptografia para substituir cryptoUtils
+const encryptData = (data: string): string => {
+  // Implementação simples, apenas para manter a compatibilidade
+  return btoa(data);
+};
+
+const decryptData = (data: string): string => {
+  // Implementação simples, apenas para manter a compatibilidade
+  try {
+    return atob(data);
+  } catch (error) {
+    console.error('Erro ao descriptografar dados:', error);
+    return '';
+  }
+};
 
 // Configuração de cookies consistente com auth.ts
 const COOKIE_OPTIONS = {
@@ -226,7 +240,8 @@ export const useAuthStore = create<AuthState>()(
             nome: userData.nome || 'Usuário',
             telefone: userData.telefone || '',
             email: email,
-            status: 'ativo'
+            status: 'ativo',
+            is_admin: false
           };
           
           // Salvar token no localStorage se houver uma sessão

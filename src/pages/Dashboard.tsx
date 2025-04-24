@@ -56,6 +56,7 @@ import { PurchaseItem, UserPurchaseStatus } from '@/types/purchase';
 import StatusCards from '@/components/dashboard/StatusCards';
 import FormStatusComponent from '@/components/dashboard/FormStatus';
 import PlanosDisponiveis from '@/components/dashboard/PlanosDisponiveis';
+import DashboardLayout from '@/components/DashboardLayout';
 
 // Importando MealPlan e WorkoutPlan com aliases para evitar conflitos
 import { MealPlan as MealPlanType, WorkoutPlan as WorkoutPlanType } from '@/types/plans';
@@ -97,6 +98,7 @@ const Dashboard: React.FC = () => {
     if (!user?.id) return;
 
     try {
+      // Verificar se a função RPC existe
       const { data, error } = await supabase.rpc(
         'get_user_purchase_status',
         { user_id: user.id }
@@ -104,6 +106,16 @@ const Dashboard: React.FC = () => {
 
       if (error) {
         console.error('Erro ao buscar estatísticas do usuário:', error);
+        // Criar objeto com valores padrão se a função RPC não existir
+        setStats({
+          user_id: user.id,
+          total_purchases: 0,
+          completed_forms: 0,
+          pending_forms: 0,
+          ready_plans: 0,
+          active_plans: 0,
+          awaiting_plans: 0
+        });
         return;
       }
 
@@ -112,6 +124,16 @@ const Dashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro ao processar estatísticas do usuário:', error);
+      // Criar objeto com valores padrão em caso de erro
+      setStats({
+        user_id: user.id,
+        total_purchases: 0,
+        completed_forms: 0,
+        pending_forms: 0,
+        ready_plans: 0,
+        active_plans: 0,
+        awaiting_plans: 0
+      });
     }
   }, [user?.id]);
 
@@ -172,25 +194,51 @@ const Dashboard: React.FC = () => {
     if (!user?.id) return;
     
     try {
+      // Verificar se a tabela user_status existe
       const { data, error } = await supabase
         .from('user_status')
         .select('alimentar_completed, treino_completed')
         .eq('user_id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar status dos formulários:', error);
+        // Definir valores padrão se a tabela não existir
+        const defaultStatus = { 
+          alimentar_completed: false, 
+          treino_completed: false 
+        };
+        setFormStatus(defaultStatus);
+        
+        // Atualiza o status do usuário na store com tipagem correta
+        if (user) {
+          updateUser({
+            ...user,
+            alimentar_completed: false,
+            treino_completed: false
+          });
+        }
+        return;
+      }
 
       if (data) {
         setFormStatus(data);
         // Atualiza o status do usuário na store com tipagem correta
-        updateUser({
-          ...user,
-          alimentar_completed: data.alimentar_completed,
-          treino_completed: data.treino_completed
-        });
+        if (user) {
+          updateUser({
+            ...user,
+            alimentar_completed: data.alimentar_completed,
+            treino_completed: data.treino_completed
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar status dos formulários:', error);
+      // Definir valores padrão em caso de erro
+      setFormStatus({ 
+        alimentar_completed: false, 
+        treino_completed: false 
+      });
     } finally {
       setLoading(false);
     }
