@@ -363,364 +363,430 @@ const UserProfile: React.FC = () => {
     if (loading) {
       return (
         <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      );
-    }
-
-    if (editing) {
-      return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome</Label>
-            <Input
-              id="nome"
-              name="nome"
-              value={userData.nome}
-              onChange={handleInputChange}
-              placeholder="Seu nome completo"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="telefone">Telefone</Label>
-            <Input
-              id="telefone"
-              name="telefone"
-              value={userData.telefone}
-              onChange={handleInputChange}
-              placeholder="Seu telefone"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              name="email"
-              value={userData.email}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">O e-mail não pode ser alterado</p>
-          </div>
-          <div className="flex justify-end space-x-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setEditing(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={uploading}>
-              Salvar alterações
-            </Button>
-          </div>
-        </form>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-start space-x-4">
-          <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">Nome</p>
-            <p className="text-sm text-muted-foreground">
-              {userData.nome || 'Não informado'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start space-x-4">
-          <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">Telefone</p>
-            <p className="text-sm text-muted-foreground">
-              {userData.telefone || 'Não informado'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start space-x-4">
-          <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium leading-none">E-mail</p>
-            <p className="text-sm text-muted-foreground">
-              {userData.email || 'Não informado'}
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setEditing(true)}
-            className="mt-4"
-          >
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar Perfil
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderFormProgress = () => {
-    if (!formStatus) return null;
-    
-    const completed = (formStatus.alimentar_completed ? 1 : 0) + 
-                     (formStatus.treino_completed ? 1 : 0);
-    const total = 2;
-    const percentage = Math.round((completed / total) * 100);
-    
-    return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Progresso dos formulários</span>
-            <span>{percentage}%</span>
-          </div>
-          <Progress value={percentage} className="h-2" />
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-4 h-4 rounded-full ${formStatus.alimentar_completed ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-              <span className="text-sm">Formulário Alimentar</span>
+          <div className="flex flex-col md:flex-row gap-4 items-start">
+            <Skeleton className="h-24 w-24 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-32" />
             </div>
-            <span className="text-sm font-medium">
-              {formStatus.alimentar_completed ? 'Completo' : 'Pendente'}
-            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <div className="relative group">
+            <Avatar 
+              className="h-24 w-24 border-4 border-emerald-100 bg-emerald-50 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
+              onClick={handleAvatarClick}
+            >
+              <AvatarImage src={userData.avatar_url || ''} alt={userData.nome} />
+              <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-green-500 text-white text-xl font-medium">
+                {userData.nome ? userData.nome.charAt(0).toUpperCase() : 'U'}
+              </AvatarFallback>
+              <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                <Camera className="h-8 w-8 text-white" />
+              </div>
+            </Avatar>
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              className="hidden" 
+              accept="image/*"
+              onChange={handleFileChange}
+            />
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={`w-4 h-4 rounded-full ${formStatus.treino_completed ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-              <span className="text-sm">Formulário de Treino</span>
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="text-2xl font-bold text-emerald-800 mb-1">
+              {userData.nome || 'Seu Nome'}
+            </h2>
+            <div className="text-emerald-600 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-3">
+              <div className="flex items-center justify-center sm:justify-start gap-1">
+                <Mail className="h-4 w-4" />
+                <span className="text-sm">{userData.email}</span>
+              </div>
+              {userData.telefone && (
+                <div className="flex items-center justify-center sm:justify-start gap-1">
+                  <Phone className="h-4 w-4" />
+                  <span className="text-sm">{userData.telefone}</span>
+                </div>
+              )}
             </div>
-            <span className="text-sm font-medium">
-              {formStatus.treino_completed ? 'Completo' : 'Pendente'}
-            </span>
+            
+            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                Editar Perfil
+              </Button>
+              
+              {user?.is_admin && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-white border-purple-200 text-purple-700 hover:bg-purple-50"
+                  onClick={() => navigate('/admin')}
+                >
+                  <Settings className="h-3.5 w-3.5 mr-2" />
+                  Painel Admin
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-        
-        {(!formStatus.alimentar_completed || !formStatus.treino_completed) && (
-          <div className="pt-2">
-            {!formStatus.alimentar_completed && (
-              <Button 
-                className="w-full mb-2" 
-                onClick={() => navigate('/formulario-alimentar')}
-              >
-                Preencher Formulário Alimentar
-              </Button>
-            )}
-            {!formStatus.treino_completed && (
-              <Button 
-                className="w-full" 
-                onClick={() => navigate('/formulario-treino')}
-              >
-                Preencher Formulário de Treino
-              </Button>
-            )}
-          </div>
+
+        {editing && (
+          <Card className="border-emerald-100 shadow-sm mt-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Editar informações</CardTitle>
+              <CardDescription>Atualize seus dados pessoais</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome</Label>
+                    <Input
+                      id="nome"
+                      name="nome"
+                      value={userData.nome}
+                      onChange={handleInputChange}
+                      placeholder="Seu nome completo"
+                      className="border-emerald-200 focus:border-emerald-400"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="telefone">Telefone</Label>
+                    <Input
+                      id="telefone"
+                      name="telefone"
+                      value={userData.telefone}
+                      onChange={handleInputChange}
+                      placeholder="Seu telefone"
+                      className="border-emerald-200 focus:border-emerald-400"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      value={userData.email}
+                      onChange={handleInputChange}
+                      placeholder="Seu email"
+                      className="border-emerald-200 focus:border-emerald-400"
+                      disabled
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      O email não pode ser alterado diretamente
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    className="border-gray-200"
+                    onClick={() => {
+                      setEditing(false);
+                      fetchUserData(); // Recarrega os dados originais
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={uploading}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {uploading ? "Salvando..." : "Salvar alterações"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         )}
       </div>
     );
   };
 
-  const renderPurchaseStats = () => {
-    if (!purchaseStatus) return null;
-    
-    const totalForms = purchaseStatus.completed_forms + purchaseStatus.pending_forms;
-    const formCompletionPercentage = totalForms > 0 
-      ? Math.round((purchaseStatus.completed_forms / totalForms) * 100) 
-      : 0;
-    
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                Compras
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{purchaseStatus.total_purchases}</div>
-              <p className="text-xs text-muted-foreground">
-                Total de compras realizadas
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Planos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {purchaseStatus.ready_plans + purchaseStatus.active_plans}
-                <span className="text-sm text-muted-foreground"> / {purchaseStatus.ready_plans + purchaseStatus.active_plans + purchaseStatus.awaiting_plans}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Planos disponíveis
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Status dos formulários
-            </CardTitle>
+  const renderFormProgress = () => {
+    if (loading || !purchaseStatus) {
+      return (
+        <Card className="border-emerald-100">
+          <CardHeader className="pb-3">
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progresso de preenchimento</span>
-              <span>{formCompletionPercentage}%</span>
-            </div>
-            <Progress value={formCompletionPercentage} className="h-2" />
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="flex items-center gap-2">
-                <FileCheck2 className="h-4 w-4 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium">Completados</p>
-                  <p className="text-xl font-bold">{purchaseStatus.completed_forms}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <FileX2 className="h-4 w-4 text-amber-500" />
-                <div>
-                  <p className="text-sm font-medium">Pendentes</p>
-                  <p className="text-xl font-bold">{purchaseStatus.pending_forms}</p>
-                </div>
-              </div>
+          <CardContent>
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => navigate('/historico-compras')}
-            >
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Ver histórico de compras
-            </Button>
-          </CardFooter>
         </Card>
-      </div>
+      );
+    }
+
+    const formProgressPercentage = () => {
+      let completed = 0;
+      if (formStatus.alimentar_completed) completed++;
+      if (formStatus.treino_completed) completed++;
+      
+      const total = purchaseStatus.total_purchases * 2; // 2 forms per purchase (alimentar + treino)
+      return total > 0 ? Math.round((completed / total) * 100) : 0;
+    };
+
+    return (
+      <Card className="border-emerald-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5 text-emerald-600" />
+            Status dos Formulários
+          </CardTitle>
+          <CardDescription>
+            Acompanhe o preenchimento dos formulários necessários
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div>
+            <div className="flex justify-between items-center mb-1 text-sm">
+              <span className="text-emerald-700">Progresso geral</span>
+              <span className="font-medium text-emerald-800">{formProgressPercentage()}%</span>
+            </div>
+            <Progress 
+              value={formProgressPercentage()} 
+              className="h-2 bg-emerald-100"
+            />
+          </div>
+          
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className={`rounded-lg border p-3 ${formStatus.alimentar_completed ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/50 border-amber-200'}`}>
+              <div className="flex items-start gap-3">
+                {formStatus.alimentar_completed ? (
+                  <FileCheck2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+                ) : (
+                  <FileX2 className="h-5 w-5 text-amber-600 mt-0.5" />
+                )}
+                <div>
+                  <h4 className={`font-medium ${formStatus.alimentar_completed ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    Formulário Alimentar
+                  </h4>
+                  <p className={`text-sm ${formStatus.alimentar_completed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {formStatus.alimentar_completed 
+                      ? "Preenchido com sucesso" 
+                      : "Pendente de preenchimento"}
+                  </p>
+                </div>
+              </div>
+              {!formStatus.alimentar_completed && (
+                <div className="mt-2 ml-8">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs h-8 bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                    onClick={() => navigate('/formulario-alimentar')}
+                  >
+                    Preencher agora
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className={`rounded-lg border p-3 ${formStatus.treino_completed ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/50 border-amber-200'}`}>
+              <div className="flex items-start gap-3">
+                {formStatus.treino_completed ? (
+                  <FileCheck2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+                ) : (
+                  <FileX2 className="h-5 w-5 text-amber-600 mt-0.5" />
+                )}
+                <div>
+                  <h4 className={`font-medium ${formStatus.treino_completed ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    Formulário de Treino
+                  </h4>
+                  <p className={`text-sm ${formStatus.treino_completed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {formStatus.treino_completed 
+                      ? "Preenchido com sucesso" 
+                      : "Pendente de preenchimento"}
+                  </p>
+                </div>
+              </div>
+              {!formStatus.treino_completed && (
+                <div className="mt-2 ml-8">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs h-8 bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                    onClick={() => navigate('/formulario-treino')}
+                  >
+                    Preencher agora
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
-  return (
-    <div className="container py-8">
-      {/* Diálogo de instruções para configuração do Supabase */}
-      <SupabaseSetupInstructions 
-        open={showSetupInstructions} 
-        onOpenChange={setShowSetupInstructions} 
-        missingColumns={missingColumns}
-      />
-      
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Meu Perfil</h1>
-          <p className="text-muted-foreground">
-            Gerencie suas informações pessoais e acompanhe seu progresso
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {(missingColumns.length > 0) && user?.is_admin && (
-            <Button 
-              variant="outline" 
-              onClick={() => setShowSetupInstructions(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Configurar banco
-            </Button>
-          )}
-          <Button variant="outline" onClick={() => navigate('/dashboard')}>
-            Voltar para o Dashboard
-          </Button>
-        </div>
-      </div>
+  const renderPurchaseStats = () => {
+    if (loading || !purchaseStatus) {
+      return (
+        <Card className="border-emerald-100">
+          <CardHeader className="pb-3">
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
+    return (
+      <Card className="border-emerald-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5 text-emerald-600" />
+            Resumo de Compras
+          </CardTitle>
+          <CardDescription>
+            Suas compras e planos ativos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-emerald-50/50 rounded-lg border border-emerald-100 p-4 text-center">
               <div className="flex flex-col items-center">
-                <div className="relative mb-4">
-                  <Avatar className={`h-24 w-24 ${editing ? 'cursor-pointer' : ''}`} onClick={handleAvatarClick}>
-                    <AvatarImage src={userData.avatar_url || ''} alt={userData.nome} />
-                    <AvatarFallback className="bg-primary text-2xl">
-                      {userData.nome ? userData.nome.charAt(0).toUpperCase() : 'U'}
-                    </AvatarFallback>
-                    {editing && (
-                      <div className="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full cursor-pointer">
-                        {uploading ? (
-                          <span className="animate-spin">
-                            <Upload className="h-4 w-4" />
-                          </span>
-                        ) : (
-                          <Camera className="h-4 w-4" />
-                        )}
-                      </div>
-                    )}
-                  </Avatar>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploading || !editing}
-                  />
+                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                  <ShoppingCart className="h-5 w-5 text-emerald-600" />
                 </div>
-                <CardTitle className="text-center">{userData.nome || 'Usuário'}</CardTitle>
-                <CardDescription className="text-center">
-                  {userData.email}
-                </CardDescription>
+                <div className="text-2xl font-bold text-emerald-800 mb-1">
+                  {purchaseStatus.total_purchases}
+                </div>
+                <div className="text-sm text-emerald-600">
+                  Total de compras
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="info">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="info">Informações</TabsTrigger>
-                  <TabsTrigger value="forms">Formulários</TabsTrigger>
-                </TabsList>
-                <TabsContent value="info" className="pt-4">
-                  {renderUserInfo()}
-                </TabsContent>
-                <TabsContent value="forms" className="pt-4">
-                  {renderFormProgress()}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Painel de Progresso</CardTitle>
-              <CardDescription>
-                Acompanhe seu progresso e o status dos seus planos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
+            </div>
+            
+            <div className="bg-blue-50/50 rounded-lg border border-blue-100 p-4 text-center">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                  <Package className="h-5 w-5 text-blue-600" />
                 </div>
-              ) : (
-                renderPurchaseStats()
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <div className="text-2xl font-bold text-blue-800 mb-1">
+                  {purchaseStatus.awaiting_plans}
+                </div>
+                <div className="text-sm text-blue-600">
+                  Planos em preparação
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-green-50/50 rounded-lg border border-green-100 p-4 text-center">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                  <CheckSquare className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="text-2xl font-bold text-green-800 mb-1">
+                  {purchaseStatus.ready_plans}
+                </div>
+                <div className="text-sm text-green-600">
+                  Planos ativos
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <Button
+              variant="outline"
+              className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+              onClick={() => navigate('/historico-compras')}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Ver histórico completo
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  if (showSetupInstructions) {
+    return (
+      <SupabaseSetupInstructions 
+        missingColumns={missingColumns}
+        onComplete={() => setShowSetupInstructions(false)}
+      />
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="max-w-5xl mx-auto">
+        <Tabs defaultValue="perfil" className="w-full space-y-6">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="perfil" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+              <User className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Perfil</span>
+              <span className="sm:hidden">Perfil</span>
+            </TabsTrigger>
+            <TabsTrigger value="forms" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+              <FileText className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Formulários</span>
+              <span className="sm:hidden">Forms</span>
+            </TabsTrigger>
+            <TabsTrigger value="compras" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Compras</span>
+              <span className="sm:hidden">Compras</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="perfil" className="space-y-6 mobile-spacing">
+            <Card className="border-emerald-100 shadow-sm mobile-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5 text-emerald-600" />
+                  Meu Perfil
+                </CardTitle>
+                <CardDescription>
+                  Gerencie suas informações pessoais
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {renderUserInfo()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="forms" className="space-y-6 mobile-spacing">
+            {renderFormProgress()}
+          </TabsContent>
+          
+          <TabsContent value="compras" className="space-y-6 mobile-spacing">
+            {renderPurchaseStats()}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
