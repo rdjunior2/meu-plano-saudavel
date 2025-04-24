@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, User, LogOut, MenuIcon, Settings, Menu, X, ShoppingCart } from "lucide-react";
+import { Dumbbell, User, LogOut, MenuIcon, Settings, Menu, X, ShoppingCart, Home } from "lucide-react";
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { 
@@ -9,7 +9,9 @@ import {
   SheetContent, 
   SheetHeader, 
   SheetTitle, 
-  SheetTrigger 
+  SheetTrigger,
+  SheetClose,
+  SheetFooter
 } from "@/components/ui/sheet";
 import {
   NavigationMenu,
@@ -64,12 +66,15 @@ const Navbar = () => {
   // Classes para animação de hover dos links
   const navLinkClass = "text-sm font-medium text-emerald-700 transition-all duration-300 hover:text-emerald-500 hover:scale-105 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 hover:after:w-full";
 
+  // Classes para links mobile
+  const mobileLinkClass = "w-full px-4 py-3 text-base text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors duration-200 rounded-lg flex items-center";
+
   return (
     <header className="sticky top-0 z-10 w-full border-b border-emerald-100 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm animate-fade-in">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2 animate-slide-in-left">
-          <Logo size={36} />
-          <Link to="/" className="flex items-center gap-2 font-heading text-xl font-semibold text-emerald-700">
+          <Logo size={isMobile ? 32 : 36} />
+          <Link to="/" className="flex items-center gap-2 font-heading text-xl font-semibold text-emerald-700 truncate">
             Meu Plano
           </Link>
         </div>
@@ -145,96 +150,113 @@ const Navbar = () => {
           </DropdownMenu>
         </nav>
         
-        {/* Mobile Navigation */}
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden bg-emerald-50 hover:bg-emerald-100 text-emerald-700">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="pr-0 border-l border-emerald-100 bg-white">
-            <SheetHeader>
-              <SheetTitle className="text-emerald-700">Menu</SheetTitle>
-            </SheetHeader>
-            <div className="px-7">
-              <Link
-                to="/"
-                className="flex items-center"
-                onClick={() => setOpen(false)}
-              >
-                <div className="flex items-center gap-2">
-                  <Logo size={28} />
-                  <span className="font-bold text-lg text-emerald-700">Meu Plano</span>
+        {/* Mobile Navigation - Botão com notificações integradas */}
+        <div className="flex items-center gap-2 md:hidden">
+          <div className="mr-1">
+            <NotificationBell /> 
+          </div>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="p-0 border-l border-emerald-100 bg-white w-[80vw] sm:w-[300px] overflow-y-auto">
+              <SheetHeader className="px-4 py-3 border-b border-emerald-100 bg-emerald-50/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Logo size={28} />
+                    <span className="font-heading font-bold text-lg text-emerald-700">Meu Plano</span>
+                  </div>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </SheetClose>
                 </div>
-              </Link>
-            </div>
-            
-            <div className="px-7 mt-4 flex items-center space-x-2">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user?.avatar_url || ''} alt={user?.nome || 'Usuário'} />
-                <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-green-500 text-white">
-                  {user?.nome ? user.nome.charAt(0).toUpperCase() : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{user?.nome || 'Usuário'}</span>
-                <span className="text-xs text-emerald-600 truncate max-w-[160px]">
-                  {user?.email || ''}
-                </span>
+              </SheetHeader>
+              
+              {/* Perfil do usuário no menu mobile */}
+              <div className="p-4 border-b border-emerald-100">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-12 w-12 border-2 border-emerald-200">
+                    <AvatarImage src={user?.avatar_url || ''} alt={user?.nome || 'Usuário'} />
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-green-500 text-white text-lg">
+                      {user?.nome ? user.nome.charAt(0).toUpperCase() : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user?.nome || 'Usuário'}</span>
+                    <span className="text-xs text-emerald-600 truncate max-w-[200px]">
+                      {user?.email || ''}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-4 mt-8">
-              <Link
-                onClick={() => setOpen(false)}
-                className="px-7 py-2 text-base text-emerald-700 hover:bg-emerald-50 transition-colors duration-200 rounded-lg flex items-center"
-                to="/dashboard"
-              >
-                Dashboard
-              </Link>
-              <Link
-                onClick={() => setOpen(false)}
-                className="px-7 py-2 text-base text-emerald-700 hover:bg-emerald-50 transition-colors duration-200 rounded-lg flex items-center"
-                to="/historico-compras"
-              >
-                <ShoppingCart className="h-4 w-4 inline-block mr-2 text-emerald-600" />
-                Compras
-              </Link>
-              <Link
-                onClick={() => setOpen(false)}
-                className="px-7 py-2 text-base text-emerald-700 hover:bg-emerald-50 transition-colors duration-200 rounded-lg flex items-center"
-                to="/perfil"
-              >
-                <User className="h-4 w-4 inline-block mr-2 text-emerald-600" />
-                Perfil
-              </Link>
-              {user?.is_admin && (
+              {/* Links de navegação mobile - agora em lista vertical */}
+              <nav className="flex flex-col pt-2">
                 <Link
                   onClick={() => setOpen(false)}
-                  className="px-7 py-2 text-base text-emerald-700 hover:bg-emerald-50 transition-colors duration-200 rounded-lg flex items-center"
-                  to="/admin"
+                  className={mobileLinkClass}
+                  to="/"
                 >
-                  <Settings className="h-4 w-4 inline-block mr-2 text-emerald-600" />
-                  Admin
+                  <Home className="h-5 w-5 mr-3 text-emerald-600" />
+                  Início
                 </Link>
-              )}
-              <div className="px-7 py-2">
-                <NotificationBell />
-              </div>
-              <Button
-                variant="ghost"
-                className="justify-start px-7 text-base font-normal text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors duration-200 rounded-lg"
-                onClick={() => {
-                  handleLogout();
-                  setOpen(false);
-                }}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+                <Link
+                  onClick={() => setOpen(false)}
+                  className={mobileLinkClass}
+                  to="/dashboard"
+                >
+                  <Dumbbell className="h-5 w-5 mr-3 text-emerald-600" />
+                  Dashboard
+                </Link>
+                <Link
+                  onClick={() => setOpen(false)}
+                  className={mobileLinkClass}
+                  to="/historico-compras"
+                >
+                  <ShoppingCart className="h-5 w-5 mr-3 text-emerald-600" />
+                  Minhas Compras
+                </Link>
+                <Link
+                  onClick={() => setOpen(false)}
+                  className={mobileLinkClass}
+                  to="/perfil"
+                >
+                  <User className="h-5 w-5 mr-3 text-emerald-600" />
+                  Meu Perfil
+                </Link>
+                {user?.is_admin && (
+                  <Link
+                    onClick={() => setOpen(false)}
+                    className={mobileLinkClass}
+                    to="/admin"
+                  >
+                    <Settings className="h-5 w-5 mr-3 text-emerald-600" />
+                    Admin
+                  </Link>
+                )}
+              </nav>
+              
+              {/* Rodapé do menu mobile */}
+              <SheetFooter className="p-4 border-t border-emerald-100 mt-auto sticky bottom-0 bg-white">
+                <Button
+                  variant="outline"
+                  className="w-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
+                  onClick={() => {
+                    handleLogout();
+                    setOpen(false);
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sair da conta
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );
