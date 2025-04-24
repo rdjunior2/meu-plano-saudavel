@@ -744,58 +744,237 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-          Bem-vindo, {user?.nome || 'Usuário'}!
-        </h1>
-        <p className="text-gray-600 max-w-3xl">
-          Acompanhe seu progresso e acesse seus planos personalizados.
-        </p>
-      </motion.div>
+    <DashboardLayout gradient>
+      <div className="mobile-spacing">
+        {/* Cabeçalho de boas-vindas */}
+        <div className="p-4 md:p-6 bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 mb-6 mobile-container">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-emerald-800 mb-1">
+                Olá, {user?.nome ? user.nome.split(' ')[0] : 'Usuário'}!
+              </h1>
+              <p className="text-emerald-600 mobile-text">
+                Veja seus planos, formulários e atualizações
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {stats && (
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1 rounded-full">
+                  <CalendarClock className="h-3.5 w-3.5 mr-1 inline-block" />
+                  {stats.pending_forms === 0 ? 'Formulários completos' : `${stats.pending_forms} formulário(s) pendente(s)`}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
 
-      {renderStatusMessage()}
-      {renderStatusCards()}
-      
-      <div className="mb-8">
-        {renderFormStatus()}
-      </div>
-      
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
-            <List className="h-5 w-5 text-emerald-600" />
-            Meus Planos
+        {/* Grid de status cards */}
+        <div className="mobile-grid mb-6">
+          {renderStatusCards()}
+        </div>
+
+        {/* Status dos formulários */}
+        <div className="mb-6 space-y-4">
+          <h2 className="text-xl font-semibold text-emerald-800 px-1 mb-2">
+            Status dos Formulários
           </h2>
-          {renderAvailablePlans()}
-        </div>
-        
-        <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg p-6 border border-emerald-100 flex items-center gap-5">
-          <div className="hidden md:block h-12 w-12 rounded-full bg-emerald-100 flex-shrink-0 flex items-center justify-center">
-            <Zap className="h-6 w-6 text-emerald-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {renderFormStatus()}
           </div>
-          <div>
-            <h3 className="text-lg font-medium text-emerald-800 mb-1">Assistência Personalizada</h3>
-            <p className="text-emerald-700 text-sm">
-              Precisa de ajuda ou tem dúvidas sobre seus planos? Nosso Agente Nutri AI está disponível 24/7.
-            </p>
-          </div>
-          <Button className="ml-auto bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white whitespace-nowrap">
-            <Sparkles className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Falar com</span> Nutri AI
-          </Button>
         </div>
-      </motion.div>
-    </div>
+
+        {/* Planos disponíveis */}
+        {purchaseItems.length > 0 && (
+          <div className="mb-4 space-y-4">
+            <h2 className="text-xl font-semibold text-emerald-800 px-1 mb-2">
+              Seus Planos
+            </h2>
+            
+            {/* Filtro de tipo de plano */}
+            <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as ActiveTab)} className="w-full">
+              <TabsList className="mb-4 bg-emerald-50 p-1">
+                <TabsTrigger value={ActiveTab.Meal} className="data-[state=active]:bg-white data-[state=active]:text-emerald-700 flex items-center">
+                  <Salad className="h-4 w-4 mr-2" />
+                  Alimentação
+                </TabsTrigger>
+                <TabsTrigger value={ActiveTab.Workout} className="data-[state=active]:bg-white data-[state=active]:text-emerald-700 flex items-center">
+                  <Dumbbell className="h-4 w-4 mr-2" />
+                  Treino
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value={ActiveTab.Meal} className="mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {mealPlans.length > 0 ? (
+                    mealPlans.map((plan) => (
+                      <Card key={plan.id} className={cn(
+                        "card-hover-effect border-emerald-100 overflow-hidden",
+                        plan.status === PlanStatus.ACTIVE && "border-l-4 border-l-emerald-500"
+                      )}>
+                        <CardHeader className="bg-gradient-to-r from-emerald-50 to-transparent pb-3">
+                          <div className="flex justify-between items-start">
+                            <CardTitle className="text-lg font-semibold text-emerald-800">
+                              {plan.title || "Plano Alimentar"}
+                            </CardTitle>
+                            <Badge variant={plan.status === PlanStatus.ACTIVE ? "default" : "outline"} className={
+                              plan.status === PlanStatus.ACTIVE 
+                                ? "bg-emerald-500" 
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                            }>
+                              {plan.status === PlanStatus.ACTIVE ? "Ativo" : "Pendente"}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-emerald-600">
+                            {plan.description || "Plano alimentar personalizado"}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm text-emerald-700">
+                              <FileText className="h-4 w-4 inline-block mr-1" />
+                              {formStatus.alimentar_completed ? "Formulário preenchido" : "Formulário pendente"}
+                            </div>
+                            <div className="text-sm text-emerald-700">
+                              <Calendar className="h-4 w-4 inline-block mr-1" />
+                              {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : "Data não disponível"}
+                            </div>
+                          </div>
+                          
+                          {plan.status === PlanStatus.PENDING && !formStatus.alimentar_completed && (
+                            <Alert className="mt-3 bg-amber-50 text-amber-800 border-amber-200">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle className="text-sm font-medium">Ação necessária</AlertTitle>
+                              <AlertDescription className="text-xs">
+                                Preencha o formulário alimentar para que possamos preparar seu plano personalizado.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2 pt-2 pb-3 bg-gray-50 border-t border-gray-100">
+                          {!formStatus.alimentar_completed ? (
+                            <Link to="/formulario-alimentar">
+                              <Button variant="outline" className="text-emerald-600 border-emerald-200 bg-white hover:bg-emerald-50">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Preencher Formulário
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Link to={`/plano/${plan.id}?type=alimentar`}>
+                              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <FileCheck2 className="h-4 w-4 mr-2" />
+                                Ver Plano
+                              </Button>
+                            </Link>
+                          )}
+                        </CardFooter>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="col-span-full">
+                      <CardHeader>
+                        <CardTitle>Nenhum plano alimentar disponível</CardTitle>
+                        <CardDescription>
+                          Você ainda não possui planos alimentares. Adquira um plano para começar.
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value={ActiveTab.Workout} className="mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {workoutPlans.length > 0 ? (
+                    workoutPlans.map((plan) => (
+                      <Card key={plan.id} className={cn(
+                        "card-hover-effect border-emerald-100 overflow-hidden",
+                        plan.status === PlanStatus.ACTIVE && "border-l-4 border-l-emerald-500"
+                      )}>
+                        <CardHeader className="bg-gradient-to-r from-emerald-50 to-transparent pb-3">
+                          <div className="flex justify-between items-start">
+                            <CardTitle className="text-lg font-semibold text-emerald-800">
+                              {plan.title || "Plano de Treino"}
+                            </CardTitle>
+                            <Badge variant={plan.status === PlanStatus.ACTIVE ? "default" : "outline"} className={
+                              plan.status === PlanStatus.ACTIVE 
+                                ? "bg-emerald-500" 
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                            }>
+                              {plan.status === PlanStatus.ACTIVE ? "Ativo" : "Pendente"}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-emerald-600">
+                            {plan.description || "Plano de treino personalizado"}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm text-emerald-700">
+                              <FileText className="h-4 w-4 inline-block mr-1" />
+                              {formStatus.treino_completed ? "Formulário preenchido" : "Formulário pendente"}
+                            </div>
+                            <div className="text-sm text-emerald-700">
+                              <Calendar className="h-4 w-4 inline-block mr-1" />
+                              {plan.created_at ? new Date(plan.created_at).toLocaleDateString() : "Data não disponível"}
+                            </div>
+                          </div>
+                          
+                          {plan.status === PlanStatus.PENDING && !formStatus.treino_completed && (
+                            <Alert className="mt-3 bg-amber-50 text-amber-800 border-amber-200">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle className="text-sm font-medium">Ação necessária</AlertTitle>
+                              <AlertDescription className="text-xs">
+                                Preencha o formulário de treino para que possamos preparar seu plano personalizado.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2 pt-2 pb-3 bg-gray-50 border-t border-gray-100">
+                          {!formStatus.treino_completed ? (
+                            <Link to="/formulario-treino">
+                              <Button variant="outline" className="text-emerald-600 border-emerald-200 bg-white hover:bg-emerald-50">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Preencher Formulário
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Link to={`/plano/${plan.id}?type=treino`}>
+                              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <FileCheck2 className="h-4 w-4 mr-2" />
+                                Ver Plano
+                              </Button>
+                            </Link>
+                          )}
+                        </CardFooter>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="col-span-full">
+                      <CardHeader>
+                        <CardTitle>Nenhum plano de treino disponível</CardTitle>
+                        <CardDescription>
+                          Você ainda não possui planos de treino. Adquira um plano para começar.
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
+        {/* Planos Disponíveis para Compra */}
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold text-emerald-800 px-1 mb-4">
+            Planos Disponíveis
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {renderAvailablePlans()}
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

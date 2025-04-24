@@ -8,6 +8,7 @@ interface DashboardLayoutProps {
   className?: string;
   fullWidth?: boolean;
   gradient?: boolean;
+  noPadding?: boolean;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -15,6 +16,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className,
   fullWidth = false,
   gradient = false,
+  noPadding = false,
 }) => {
   const isMobile = useIsMobile();
 
@@ -32,8 +34,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         
         {/* Conteúdo principal */}
         <div className={cn(
-          "mx-auto py-4 md:py-6 px-3 sm:px-6 lg:px-8 relative -mt-8 md:-mt-10 z-10",
-          fullWidth ? "w-full max-w-[100%]" : "max-w-7xl"
+          "relative -mt-8 md:-mt-10 z-10",
+          fullWidth ? "w-full px-0 md:px-0" : "w-[95%] md:w-[90%] max-w-7xl mx-auto"
         )}>
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
@@ -41,7 +43,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             transition={{ duration: 0.4 }}
             className={cn(
               "bg-white rounded-lg shadow-sm border border-emerald-100 overflow-hidden",
-              isMobile ? "p-3 sm:p-4" : "p-6"
+              !noPadding && (isMobile ? "p-4 sm:p-5" : "p-6")
             )}
           >
             {children}
