@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,12 +16,20 @@ export type NivelAtualFormValues = z.infer<typeof nivelAtualSchema>;
 
 interface NivelAtualStepProps {
   form: ReturnType<typeof useForm<NivelAtualFormValues>>;
+  onValidSubmit?: () => void;
 }
 
-const NivelAtualStep: React.FC<NivelAtualStepProps> = ({ form }) => {
+const NivelAtualStep: React.FC<NivelAtualStepProps> = ({ form, onValidSubmit }) => {
+  const handleNext = async () => {
+    if (onValidSubmit) {
+      const isValid = await form.trigger();
+      if (isValid) onValidSubmit();
+    }
+  };
+  
   return (
     <Form {...form}>
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
         <FormField
           control={form.control}
           name="nivel_condicionamento"

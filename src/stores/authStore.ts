@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { User } from '../types/user';
 import Cookies from 'js-cookie';
 import { 
@@ -16,59 +16,12 @@ import { supabase } from '../lib/supabaseClient';
 import { logEvent, LogSeverity } from '../services/logs';
 import { api } from '../services/api';
 
-// Implementação básica de funções de criptografia para substituir cryptoUtils
-const encryptData = (data: string): string => {
-  // Implementação simples, apenas para manter a compatibilidade
-  return btoa(data);
-};
-
-const decryptData = (data: string): string => {
-  // Implementação simples, apenas para manter a compatibilidade
-  try {
-    return atob(data);
-  } catch (error) {
-    console.error('Erro ao descriptografar dados:', error);
-    return '';
-  }
-};
-
 // Configuração de cookies consistente com auth.ts
 const COOKIE_OPTIONS = {
   secure: import.meta.env.PROD, // Secure em produção
   sameSite: import.meta.env.PROD ? 'none' as const : 'lax' as const, // Alterar para 'none' em produção
   expires: 7, // 7 dias
   domain: import.meta.env.PROD ? window.location.hostname.split('.').slice(-2).join('.') : undefined // Define o domínio em produção
-};
-
-// Armazenamento seguro baseado em localStorage (em vez de cookies)
-const secureStorage = {
-  getItem: () => {
-    try {
-      const userStr = localStorage.getItem('user_data');
-      return userStr ? Promise.resolve(userStr) : Promise.resolve(null);
-    } catch (error) {
-      console.error('Erro ao ler dados do usuário:', error);
-      return Promise.resolve(null);
-    }
-  },
-  setItem: (_name: string, value: string) => {
-    try {
-      localStorage.setItem('user_data', value);
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Erro ao salvar dados do usuário:', error);
-      return Promise.resolve();
-    }
-  },
-  removeItem: () => {
-    try {
-      localStorage.removeItem('user_data');
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Erro ao remover dados do usuário:', error);
-      return Promise.resolve();
-    }
-  }
 };
 
 interface AuthState {
@@ -208,6 +161,9 @@ export const useAuthStore = create<AuthState>()(
       
       // Login com email e senha
       loginWithEmail: async (email, password) => {
+        // Limpar qualquer estado anterior
+        localStorage.removeItem('token');
+        
         const result = await loginWithEmail(email, password);
         
         if (result.success && result.user) {
@@ -245,224 +201,167 @@ export const useAuthStore = create<AuthState>()(
           };
           
           // Salvar token no localStorage se houver uma sessão
-          // Obs: Estamos ignorando o erro de tipagem aqui, pois sabemos que o resultado
-          // pode conter uma sessão, mesmo que não esteja no tipo
-          const session = (result as any).session;
-          if (session?.access_token) {
-            localStorage.setItem("token", session.access_token);
+          if (result.session?.access_token) {
+            localStorage.setItem("token", result.session.access_token);
           }
           
           set({
             user,
             isAuthenticated: true,
-            isLoggedIn: true,
+            isLoggedIn: true
           });
-          
-          console.log('[AuthStore] Registro realizado com sucesso');
           
           return {
             success: true,
             user,
-            warning: result.warning,
-            session: (result as any).session
+            session: result.session,
+            warning: result.warning
           };
         }
         
-        return {
-          success: false,
-          error: result.error
-        };
+        return result;
       },
       
-      // Verificar se a sessão ainda é válida
+      // Verificar a sessão atual
       verifySession: async () => {
         try {
-          const { data, error } = await supabase.auth.getSession();
+          // Verificar se há um token no localStorage
+          const token = localStorage.getItem('token');
           
-          if (error) {
-            console.error('[AuthStore] Erro ao verificar sessão:', error);
-            set({ isAuthenticated: false, user: null, isLoggedIn: false });
+          // Se não houver token, retornar false
+          if (!token) {
+            console.log('[AuthStore] Nenhum token encontrado, usuário não autenticado');
+            set({
+              isAuthenticated: false,
+              isLoggedIn: false,
+              isLoading: false
+            });
             return false;
           }
           
-          const isValid = !!data.session;
+          // Verificar sessão no Supabase
+          const { data, error } = await supabase.auth.getSession();
           
-          // Se a sessão não for válida, limpar estado
-          if (!isValid) {
-            console.log('[AuthStore] Sessão inválida, limpando estado de autenticação');
-            set({ isAuthenticated: false, user: null, isLoggedIn: false });
-            localStorage.removeItem("token");
+          if (error || !data.session) {
+            console.error('[AuthStore] Erro ao verificar sessão ou sessão inválida:', error);
+            set({
+              isAuthenticated: false,
+              isLoggedIn: false,
+              isLoading: false
+            });
+            return false;
           }
           
-          return isValid;
+          // Se chegou até aqui, o usuário está autenticado
+          console.log('[AuthStore] Sessão válida encontrada');
+          set({
+            isAuthenticated: true,
+            isLoggedIn: true,
+            isLoading: false
+          });
+          
+          return true;
         } catch (error) {
           console.error('[AuthStore] Erro ao verificar sessão:', error);
-          set({ isAuthenticated: false, user: null, isLoggedIn: false });
+          set({
+            isAuthenticated: false,
+            isLoggedIn: false,
+            isLoading: false
+          });
           return false;
         }
       },
       
       // Login com Google
       signInWithGoogle: async () => {
-        try {
-          console.log('[AuthStore] Iniciando login com Google');
-          const result = await serviceSignInWithGoogle();
-          
-          if (!result.success) {
-            console.error('[AuthStore] Erro ao iniciar login com Google:', result.error);
-          } else {
-            console.log('[AuthStore] Redirecionando para autenticação com Google');
-          }
-          
-          return result;
-        } catch (error: any) {
-          console.error('[AuthStore] Erro ao iniciar login com Google:', error);
-          return { 
-            success: false, 
-            error: error?.message || 'Erro desconhecido ao iniciar login com Google'
-          };
-        }
+        return await serviceSignInWithGoogle();
       },
       
-      // Inicialização da autenticação, verificando token no localStorage
+      // Inicializar o estado de autenticação
       initialize: async () => {
         try {
-          console.log('[AuthStore] Inicializando autenticação...');
-          set({ isLoading: true });
+          console.log('[AuthStore] Inicializando estado de autenticação');
+          set({ isLoading: true, isInitialized: true });
           
-          // Verificar se há uma sessão ativa
-          const { data, error } = await supabase.auth.getSession();
+          // Verificar sessão e definir estado
+          await get().verifySession();
           
-          if (error) {
-            console.error('[AuthStore] Erro ao obter sessão:', error.message);
-            clearAuthCookies();
-            set({ user: null, isLoggedIn: false, isLoading: false, isInitialized: true });
-            return;
+          // Se autenticado, buscar perfil do usuário
+          if (get().isAuthenticated) {
+            const { data } = await supabase.auth.getUser();
+            if (data?.user) {
+              // Buscar perfil do usuário
+              const profile = await get().fetchProfile();
+              if (profile.success && profile.data) {
+                set({ user: profile.data });
+              }
+            }
           }
           
-          // Se houver sessão, definir o usuário
-          if (data?.session) {
-            console.log('[AuthStore] Sessão existente encontrada');
-            
-            // Token para API e cookies
-            const token = data.session.access_token;
-            setAuthCookies(data.session);
-            
-            // Configurar estado da autenticação
-            set({ 
-              user: data.session.user, 
-              isLoggedIn: true, 
-              isLoading: false,
-              isInitialized: true 
-            });
-            
-            // Buscar perfil do usuário
-            await get().fetchProfile();
-          } else {
-            console.log('[AuthStore] Nenhuma sessão válida encontrada');
-            set({ user: null, isLoggedIn: false, isLoading: false, isInitialized: true });
-          }
-        } catch (error: any) {
-          console.error('[AuthStore] Erro na inicialização:', error.message);
-          logEvent('auth_init_error', 'Erro na inicialização da autenticação', LogSeverity.ERROR, { error: error.message });
-          set({ user: null, isLoggedIn: false, isLoading: false, isInitialized: true });
+          set({ isLoading: false });
+        } catch (error) {
+          console.error('[AuthStore] Erro ao inicializar:', error);
+          set({ isLoading: false });
         }
       },
       
-      // Getters e Setters
+      // Setters para testes e depuração
       setUser: (user) => set({ user }),
       setIsLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
       setIsLoading: (isLoading) => set({ isLoading }),
       setProfile: (profile) => set({ profile }),
-
-      // Buscar perfil do usuário
-      fetchProfile: async () => {
-        const state = get();
-        
-        // Verificar se há um usuário autenticado
-        if (!state.user?.id) {
-          console.log('[AuthStore] Tentativa de buscar perfil sem usuário');
-          return { success: false, error: 'Usuário não autenticado' };
-        }
-        
-        try {
-          console.log('[AuthStore] Buscando perfil do usuário');
-          
-          // Buscar perfil via API
-          const response = await api.get(`/users/profile`);
-          
-          if (response.status === 200 && response.data) {
-            console.log('[AuthStore] Perfil obtido com sucesso');
-            set({ profile: response.data });
-            return { success: true, data: response.data };
-          }
-          
-          console.warn('[AuthStore] Resposta inesperada ao buscar perfil:', response);
-          return { success: false, error: 'Falha ao obter perfil' };
-        } catch (error: any) {
-          console.error('[AuthStore] Erro ao buscar perfil:', error.message);
-          logEvent('profile_fetch_error', 'Erro ao buscar perfil do usuário', LogSeverity.WARNING, { error: error.message });
-          return { success: false, error: error.message };
-        }
-      },
       
       // Atualizar perfil do usuário
       updateProfile: async (data) => {
-        const state = get();
-        
-        // Verificar se há um usuário autenticado
-        if (!state.user?.id) {
-          console.log('[AuthStore] Tentativa de atualizar perfil sem usuário');
-          return { success: false, error: 'Usuário não autenticado' };
-        }
-        
         try {
-          console.log('[AuthStore] Atualizando perfil do usuário');
-          
-          // Atualizar perfil via API
-          const response = await api.patch(`/users/profile`, data);
-          
-          if (response.status === 200 && response.data) {
-            console.log('[AuthStore] Perfil atualizado com sucesso');
-            set({ profile: response.data });
-            return { success: true };
+          const userId = get().user?.id;
+          if (!userId) {
+            return { success: false, error: 'Usuário não autenticado' };
           }
           
-          console.warn('[AuthStore] Resposta inesperada ao atualizar perfil:', response);
-          return { success: false, error: 'Falha ao atualizar perfil' };
+          return await updateUserProfile(userId, data);
         } catch (error: any) {
-          console.error('[AuthStore] Erro ao atualizar perfil:', error.message);
-          logEvent('profile_update_error', 'Erro ao atualizar perfil do usuário', LogSeverity.WARNING, { error: error.message });
-          return { success: false, error: error.message };
+          return { 
+            success: false, 
+            error: error?.message || 'Erro desconhecido ao atualizar perfil'
+          };
         }
       },
+      
+      // Buscar perfil do usuário
+      fetchProfile: async () => {
+        try {
+          const { data } = await supabase.auth.getUser();
+          
+          if (!data?.user) {
+            return { success: false, error: 'Usuário não autenticado' };
+          }
+          
+          // Buscar perfil do usuário na tabela profiles
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+          
+          if (error) {
+            console.error('[AuthStore] Erro ao buscar perfil:', error);
+            return { success: false, error: error.message };
+          }
+          
+          return { success: true, data: profile };
+        } catch (error: any) {
+          console.error('[AuthStore] Erro ao buscar perfil:', error);
+          return { 
+            success: false, 
+            error: error?.message || 'Erro desconhecido ao buscar perfil'
+          };
+        }
+      }
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => secureStorage),
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        isLoggedIn: state.isLoggedIn,
-      }),
-      // Antes de hidratar o estado do armazenamento, verificar se o token existe
-      onRehydrateStorage: () => {
-        return (state) => {
-          if (state) {
-            // Se não houver token no localStorage mas o estado persistido diz que está autenticado,
-            // significa que o estado está inválido e deve ser limpo
-            const token = localStorage.getItem("token");
-            if (!token && state.isLoggedIn) {
-              console.warn('[AuthStore] Estado inconsistente: não há token, mas o estado está autenticado. Limpando...');
-              state.setIsAuthenticated(false);
-              state.setIsLoggedIn(false);
-            } else if (state.isLoggedIn) {
-              // Atualizar verificação da sessão
-              state.verifySession();
-            }
-          }
-        };
-      },
+      skipHydration: true // Evitar problemas de hidratação
     }
   )
 );

@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { logEvent, LogSeverity } from '../services/logs';
 import { supabase } from '@/lib/supabaseClient';
-import DashboardLayout from './DashboardLayout';
+import AppLayout from './AppLayout';
 import LoadingSpinner from './LoadingSpinner';
 
 /**
@@ -15,6 +15,8 @@ interface PrivateRouteProps {
   loadingComponent?: ReactNode;
   useLayout?: boolean;
   gradient?: boolean;
+  noPadding?: boolean;
+  isAdmin?: boolean;
 }
 
 /**
@@ -25,12 +27,19 @@ const PrivateRoute = ({
   redirectPath = "/login",
   loadingComponent = <LoadingSpinner />,
   useLayout = true,
-  gradient = true
+  gradient = true,
+  noPadding = false,
+  isAdmin = false
 }: PrivateRouteProps) => {
-  const { isAuthenticated: authStoreAuthenticated, isLoading: authStoreLoading, login } = useAuthStore();
+  const { isAuthenticated: authStoreAuthenticated, isLoading: authStoreLoading, login, user } = useAuthStore();
   const [isVerifying, setIsVerifying] = useState(true);
   const [isTokenVerified, setIsTokenVerified] = useState(false);
   const location = useLocation();
+  
+  // Verificar se estamos em uma rota administrativa
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  // Combinar o prop isAdmin com a verificação de rota
+  const isAdminPage = isAdmin || isAdminRoute;
 
   // Verificação adicional do token e sessão
   useEffect(() => {
@@ -156,7 +165,11 @@ const PrivateRoute = ({
 
   // Exibe um indicador de carregamento enquanto verifica a autenticação
   if (isLoading) {
-    return <>{loadingComponent}</>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        {loadingComponent}
+      </div>
+    );
   }
 
   // Log de diagnóstico
@@ -164,7 +177,9 @@ const PrivateRoute = ({
     authStoreAuthenticated,
     isTokenVerified,
     isAuthenticated,
-    path: location.pathname
+    path: location.pathname,
+    isAdmin: user?.is_admin,
+    isAdminRoute
   });
 
   // Redireciona para a página de login se não estiver autenticado
@@ -174,15 +189,28 @@ const PrivateRoute = ({
     });
     return <Navigate to={redirectPath} replace state={{ from: location }} />;
   }
+
+  // Se a rota for administrativa mas o usuário não for admin, redireciona para dashboard
+  if (isAdminRoute && !user?.is_admin) {
+    logEvent('admin_access_denied', 'Usuário sem permissão tentou acessar área administrativa', LogSeverity.WARNING, {
+      userId: user?.id,
+      path: location.pathname
+    });
+    return <Navigate to="/dashboard" replace state={{ 
+      message: "Você não tem permissão para acessar esta área" 
+    }} />;
+  }
   
   // Se estiver autenticado, renderiza o conteúdo protegido usando o layout
   if (useLayout) {
     return (
-      <DashboardLayout gradient={gradient}>
-        <div className="p-6 md:p-8">
-          {children}
-        </div>
-      </DashboardLayout>
+      <AppLayout 
+        gradient={gradient ? "default" : "none"}
+        noPadding={noPadding}
+        isAdmin={isAdminPage}
+      >
+        {children}
+      </AppLayout>
     );
   }
   

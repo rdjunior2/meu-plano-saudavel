@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabaseClient';
 import { 
@@ -35,21 +35,272 @@ import {
   Pencil,
   Settings
 } from 'lucide-react';
-import { uploadAvatar } from '@/services/storage';
+import { uploadAvatar, removeOldAvatars } from '@/services/storage';
 import SupabaseSetupInstructions from '@/components/SupabaseSetupInstructions';
+import { formatPhoneNumber, formattedPhoneToDigitsOnly } from '@/utils/format';
 
 interface UserFormStatus {
   alimentar_completed: boolean;
   treino_completed: boolean;
 }
 
+// Componente para Avatar com upload
+const AvatarUpload = ({ 
+  userData, 
+  setUserData, 
+  user, 
+  editing, 
+  avatarColumnExists, 
+  missingColumns, 
+  setShowSetupInstructions, 
+  uploading, 
+  setUploading 
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleAvatarClick = () => {
+    if (editing && fileInputRef.current && avatarColumnExists) {
+      fileInputRef.current.click();
+    } else if (editing && (missingColumns.length > 0) && user?.is_admin) {
+      setShowSetupInstructions(true);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    
+    if (!files || files.length === 0 || !user?.id || !avatarColumnExists) {
+      return;
+    }
+    
+    const file = files[0];
+    
+    try {
+      setUploading(true);
+      
+      const result = await uploadAvatar(user.id, file);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      // Atualizar o avatar no estado local
+      setUserData({
+        ...userData,
+        avatar_url: result.url
+      });
+      
+      // Atualizar o avatar_url no banco de dados
+      const { error, data } = await supabase
+        .from('profiles')
+        .update({ avatar_url: result.url })
+        .eq('id', user.id)
+        .select();
+        
+      if (error) {
+        console.error('Erro ao atualizar avatar_url no banco:', error);
+        throw new Error('Não foi possível salvar o avatar no banco de dados');
+      }
+      
+      console.log('Avatar atualizado com sucesso no banco:', data);
+      
+      // Remover avatares antigos do storage
+      const cleanupResult = await removeOldAvatars(user.id, result.url);
+      if (!cleanupResult.success) {
+        console.warn('Aviso: Não foi possível remover avatares antigos:', cleanupResult.error);
+      }
+      
+      // Atualizar o store de autenticação
+      const { updateUser } = useAuthStore.getState();
+      updateUser({
+        ...user,
+        avatar_url: result.url
+      });
+      
+      toast({
+        title: "Avatar atualizado",
+        description: "Sua foto de perfil foi atualizada com sucesso no banco de dados",
+      });
+    } catch (error) {
+      console.error('Erro ao fazer upload do avatar:', error);
+      toast({
+        title: "Erro no upload",
+        description: error instanceof Error ? error.message : "Não foi possível fazer o upload da imagem",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Limpar o input de arquivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  return (
+    <div className="relative group">
+      <Avatar 
+        className="h-20 w-20 md:h-24 md:w-24 border-4 border-emerald-100 bg-emerald-50 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
+        onClick={handleAvatarClick}
+      >
+        <AvatarImage src={userData.avatar_url || ''} alt={userData.nome} />
+        <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-green-500 text-white text-lg md:text-xl font-medium">
+          {userData.nome ? userData.nome.charAt(0).toUpperCase() : 'U'}
+        </AvatarFallback>
+        {editing && (
+          <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <Camera className="h-6 w-6 md:h-8 md:w-8 text-white" />
+          </div>
+        )}
+      </Avatar>
+      <input 
+        type="file" 
+        ref={fileInputRef}
+        className="hidden" 
+        accept="image/*"
+        onChange={handleFileChange}
+      />
+    </div>
+  );
+};
+
+// Componente interno para exibir o formulário de edição do perfil
+const ProfileEditForm: React.FC<{
+  userData: {
+    nome: string;
+    telefone: string;
+  };
+  setUserData: React.Dispatch<React.SetStateAction<{
+    nome: string;
+    telefone: string;
+    email: string;
+    avatar_url: string;
+  }>>;
+  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  setEditing: React.Dispatch<React.SetStateAction<boolean>>;
+  isSubmitting: boolean;
+}> = ({ userData, setUserData, handleSubmit, setEditing, isSubmitting }) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'telefone') {
+      // Aplicar formatação em tempo real para o campo de telefone
+      const digitsOnly = value.replace(/\D/g, '');
+      const formattedValue = formatPhoneNumber(digitsOnly);
+      
+      setUserData(prev => ({
+        ...prev,
+        [name]: formattedValue
+      }));
+    } else {
+      setUserData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="nome">Nome</Label>
+        <Input
+          id="nome"
+          name="nome"
+          type="text"
+          value={userData.nome}
+          onChange={handleInputChange}
+          placeholder="Seu nome"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="telefone">Telefone</Label>
+        <Input
+          id="telefone"
+          name="telefone"
+          type="tel"
+          value={userData.telefone}
+          onChange={handleInputChange}
+          placeholder="(00) 00000-0000"
+        />
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={() => setEditing(false)}
+          disabled={isSubmitting}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Salvando..." : "Salvar alterações"}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// Componente interno para exibir os dados do perfil
+const ProfileInfo: React.FC<{
+  userData: {
+    nome: string;
+    telefone: string;
+    email: string;
+  };
+  setEditing: React.Dispatch<React.SetStateAction<boolean>>;
+}> = ({ userData, setEditing }) => {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <User size={20} className="text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">Nome</p>
+          <p className="text-sm text-muted-foreground">{userData.nome || "-"}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <Phone size={20} className="text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">Telefone</p>
+          <p className="text-sm text-muted-foreground">{userData.telefone || "-"}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <Mail size={20} className="text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium">Email</p>
+          <p className="text-sm text-muted-foreground">{userData.email || "-"}</p>
+        </div>
+      </div>
+      <div className="pt-4">
+        <Button 
+          onClick={() => setEditing(true)} 
+          variant="outline" 
+          className="w-full"
+        >
+          <Pencil size={16} className="mr-2" />
+          Editar informações
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Componente principal do UserProfile
 const UserProfile: React.FC = () => {
   const { isAuthenticated, user, updateUser } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formStatus, setFormStatus] = useState<UserFormStatus>({ 
     alimentar_completed: false, 
     treino_completed: false 
@@ -68,6 +319,11 @@ const UserProfile: React.FC = () => {
   const [avatarColumnExists, setAvatarColumnExists] = useState(true);
   const [nomeColumnExists, setNomeColumnExists] = useState(true);
   const [missingColumns, setMissingColumns] = useState<string[]>([]);
+  
+  // Obter a tab ativa da URL
+  const searchParams = new URLSearchParams(location.search);
+  const tabFromUrl = searchParams.get('tab');
+  const defaultTab = tabFromUrl === 'forms' || tabFromUrl === 'compras' ? tabFromUrl : 'perfil';
 
   // Verificar se as colunas necessárias existem
   useEffect(() => {
@@ -205,170 +461,96 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setUserData({
-      ...userData,
-      [name]: value
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!user?.id) return;
+    setIsSubmitting(true);
     
     try {
-      // Validar os dados básicos antes de enviar
-      if (!userData.nome.trim() && nomeColumnExists) {
-        throw new Error('O nome não pode estar vazio');
+      // Validar nome
+      if (userData.nome.trim() === '') {
+        toast({
+          title: "Nome obrigatório",
+          description: "Por favor, informe seu nome.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
       }
-
-      if (!userData.telefone.trim()) {
-        throw new Error('O telefone não pode estar vazio');
-      }
-
-      // Remover qualquer espaço ou caractere especial do telefone
-      const telefoneFormatado = userData.telefone.replace(/\D/g, '');
       
-      // Preparar os dados para atualização
-      const updateData: any = {
-        telefone: telefoneFormatado
-      };
+      // Formatar o telefone para armazenamento (apenas dígitos)
+      const telefoneFormatado = userData.telefone ? formattedPhoneToDigitsOnly(userData.telefone) : '';
       
-      // Adicionar nome apenas se a coluna existir
+      const updateData: { [key: string]: string } = {};
+      
+      // Adiciona nome apenas se a coluna existir
       if (nomeColumnExists) {
         updateData.nome = userData.nome.trim();
       }
       
-      // Adicionar avatar_url apenas se a coluna existir
-      if (avatarColumnExists && userData.avatar_url) {
-        updateData.avatar_url = userData.avatar_url;
-      }
+      // Adiciona telefone (já formatado)
+      updateData.telefone = telefoneFormatado;
       
-      // Tente atualizar com os campos disponíveis
+      // Atualiza o perfil no banco de dados
       const { error } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', user.id);
-
+      
       if (error) {
-        console.error('Erro na atualização do perfil:', error);
-        throw new Error(error.message || 'Erro ao atualizar perfil no banco de dados');
+        console.error('Erro ao atualizar perfil:', error);
+        toast({
+          title: "Erro ao atualizar",
+          description: "Não foi possível atualizar seu perfil. Tente novamente.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
       }
-
-      // Atualizar o estado global do usuário com todos os dados
+      
+      // Atualiza o estado global do usuário
       await updateUser({
         ...user,
         nome: userData.nome.trim(),
         telefone: telefoneFormatado,
-        avatar_url: userData.avatar_url // Mantemos no estado local mesmo se não existe no banco ainda
+        avatar_url: userData.avatar_url
       });
-
+      
       toast({
         title: "Perfil atualizado",
-        description: "Suas informações foram atualizadas com sucesso",
+        description: "Suas informações foram atualizadas com sucesso.",
       });
       
       setEditing(false);
-    } catch (error: any) {
-      console.error('Erro ao atualizar perfil:', error);
+    } catch (err) {
+      console.error('Erro ao atualizar perfil:', err);
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível atualizar seu perfil",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAvatarClick = () => {
-    // Permitir clique apenas se a coluna existir ou se estiver em modo de edição
-    if (editing && fileInputRef.current && avatarColumnExists) {
-      fileInputRef.current.click();
-    } else if (editing && (missingColumns.length > 0) && user?.is_admin) {
-      // Se for admin e alguma coluna não existir, mostrar instruções
-      setShowSetupInstructions(true);
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    
-    if (!files || files.length === 0 || !user?.id || !avatarColumnExists) {
-      return;
-    }
-    
-    const file = files[0];
-    
-    try {
-      setUploading(true);
-      
-      const result = await uploadAvatar(user.id, file);
-      
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      
-      // Atualizar o avatar no estado local
-      setUserData({
-        ...userData,
-        avatar_url: result.url
-      });
-      
-      // Tente atualizar apenas o avatar_url
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            avatar_url: result.url
-          })
-          .eq('id', user.id);
-          
-        if (error) {
-          console.error('Erro ao atualizar avatar_url no banco:', error);
-          // Continuar mesmo com erro, pois já temos o arquivo armazenado
-        }
-      } catch (updateError) {
-        console.error('Erro ao tentar atualizar avatar_url:', updateError);
-        // Continuar mesmo com erro, pois já temos o arquivo armazenado
-      }
-      
-      // Atualizar o store de autenticação
-      updateUser({
-        ...user,
-        avatar_url: result.url
-      });
-      
-      toast({
-        title: "Avatar atualizado",
-        description: "Sua foto de perfil foi atualizada com sucesso",
-      });
-    } catch (error) {
-      console.error('Erro ao fazer upload do avatar:', error);
-      toast({
-        title: "Erro no upload",
-        description: error instanceof Error ? error.message : "Não foi possível fazer o upload da imagem",
+        title: "Erro ao atualizar",
+        description: "Ocorreu um erro ao processar sua solicitação.",
         variant: "destructive",
       });
     } finally {
-      setUploading(false);
-      // Limpar o input de arquivo
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setIsSubmitting(false);
     }
+  };
+
+  // Atualizar a URL quando a tab mudar
+  const handleTabChange = (tab: string) => {
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('tab', tab);
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
   };
 
   const renderUserInfo = () => {
     if (loading) {
       return (
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4 items-start">
-            <Skeleton className="h-24 w-24 rounded-full" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
-              <Skeleton className="h-4 w-32" />
+          <div className="flex flex-col md:flex-row gap-4 items-center md:items-start">
+            <Skeleton className="h-20 w-20 md:h-24 md:w-24 rounded-full" />
+            <div className="space-y-2 flex-1 w-full text-center md:text-left">
+              <Skeleton className="h-6 w-48 mx-auto md:mx-0" />
+              <Skeleton className="h-4 w-64 mx-auto md:mx-0" />
+              <Skeleton className="h-4 w-32 mx-auto md:mx-0" />
             </div>
           </div>
         </div>
@@ -377,34 +559,24 @@ const UserProfile: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <div className="relative group">
-            <Avatar 
-              className="h-24 w-24 border-4 border-emerald-100 bg-emerald-50 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
-              onClick={handleAvatarClick}
-            >
-              <AvatarImage src={userData.avatar_url || ''} alt={userData.nome} />
-              <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-green-500 text-white text-xl font-medium">
-                {userData.nome ? userData.nome.charAt(0).toUpperCase() : 'U'}
-              </AvatarFallback>
-              <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <Camera className="h-8 w-8 text-white" />
-              </div>
-            </Avatar>
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              className="hidden" 
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-          </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+          <AvatarUpload 
+            userData={userData}
+            setUserData={setUserData}
+            user={user}
+            editing={editing}
+            avatarColumnExists={avatarColumnExists}
+            missingColumns={missingColumns}
+            setShowSetupInstructions={setShowSetupInstructions}
+            uploading={uploading}
+            setUploading={setUploading}
+          />
           
           <div className="flex-1 text-center sm:text-left">
-            <h2 className="text-2xl font-bold text-emerald-800 mb-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-emerald-800 mb-1">
               {userData.nome || 'Seu Nome'}
             </h2>
-            <div className="text-emerald-600 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-3 text-emerald-600">
               <div className="flex items-center justify-center sm:justify-start gap-1">
                 <Mail className="h-4 w-4" />
                 <span className="text-sm">{userData.email}</span>
@@ -444,78 +616,13 @@ const UserProfile: React.FC = () => {
         </div>
 
         {editing && (
-          <Card className="border-emerald-100 shadow-sm mt-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Editar informações</CardTitle>
-              <CardDescription>Atualize seus dados pessoais</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">Nome</Label>
-                    <Input
-                      id="nome"
-                      name="nome"
-                      value={userData.nome}
-                      onChange={handleInputChange}
-                      placeholder="Seu nome completo"
-                      className="border-emerald-200 focus:border-emerald-400"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone</Label>
-                    <Input
-                      id="telefone"
-                      name="telefone"
-                      value={userData.telefone}
-                      onChange={handleInputChange}
-                      placeholder="Seu telefone"
-                      className="border-emerald-200 focus:border-emerald-400"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      value={userData.email}
-                      onChange={handleInputChange}
-                      placeholder="Seu email"
-                      className="border-emerald-200 focus:border-emerald-400"
-                      disabled
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      O email não pode ser alterado diretamente
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    className="border-gray-200"
-                    onClick={() => {
-                      setEditing(false);
-                      fetchUserData(); // Recarrega os dados originais
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit"
-                    disabled={uploading}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {uploading ? "Salvando..." : "Salvar alterações"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <ProfileEditForm 
+            userData={userData}
+            setUserData={setUserData}
+            handleSubmit={handleSubmit}
+            setEditing={setEditing}
+            isSubmitting={isSubmitting}
+          />
         )}
       </div>
     );
@@ -678,7 +785,7 @@ const UserProfile: React.FC = () => {
                 <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
                   <ShoppingCart className="h-5 w-5 text-emerald-600" />
                 </div>
-                <div className="text-2xl font-bold text-emerald-800 mb-1">
+                <div className="text-xl md:text-2xl font-bold text-emerald-800 mb-1">
                   {purchaseStatus.total_purchases}
                 </div>
                 <div className="text-sm text-emerald-600">
@@ -692,7 +799,7 @@ const UserProfile: React.FC = () => {
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-2">
                   <Package className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-2xl font-bold text-blue-800 mb-1">
+                <div className="text-xl md:text-2xl font-bold text-blue-800 mb-1">
                   {purchaseStatus.awaiting_plans}
                 </div>
                 <div className="text-sm text-blue-600">
@@ -706,7 +813,7 @@ const UserProfile: React.FC = () => {
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-2">
                   <CheckSquare className="h-5 w-5 text-green-600" />
                 </div>
-                <div className="text-2xl font-bold text-green-800 mb-1">
+                <div className="text-xl md:text-2xl font-bold text-green-800 mb-1">
                   {purchaseStatus.ready_plans}
                 </div>
                 <div className="text-sm text-green-600">
@@ -731,7 +838,7 @@ const UserProfile: React.FC = () => {
     );
   };
 
-  if (showSetupInstructions) {
+  if (showSetupInstructions && user?.is_admin) {
     return (
       <SupabaseSetupInstructions 
         missingColumns={missingColumns}
@@ -741,14 +848,13 @@ const UserProfile: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto px-4 py-4 md:py-6">
       <div className="max-w-5xl mx-auto">
-        <Tabs defaultValue="perfil" className="w-full space-y-6">
+        <Tabs defaultValue={defaultTab} className="w-full space-y-6" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="perfil" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
               <User className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Perfil</span>
-              <span className="sm:hidden">Perfil</span>
+              <span>Perfil</span>
             </TabsTrigger>
             <TabsTrigger value="forms" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
               <FileText className="h-4 w-4 mr-2" />
@@ -762,8 +868,8 @@ const UserProfile: React.FC = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="perfil" className="space-y-6 mobile-spacing">
-            <Card className="border-emerald-100 shadow-sm mobile-card">
+          <TabsContent value="perfil" className="space-y-6">
+            <Card className="border-emerald-100 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <User className="h-5 w-5 text-emerald-600" />
@@ -779,11 +885,11 @@ const UserProfile: React.FC = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="forms" className="space-y-6 mobile-spacing">
+          <TabsContent value="forms" className="space-y-6">
             {renderFormProgress()}
           </TabsContent>
           
-          <TabsContent value="compras" className="space-y-6 mobile-spacing">
+          <TabsContent value="compras" className="space-y-6">
             {renderPurchaseStats()}
           </TabsContent>
         </Tabs>

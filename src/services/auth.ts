@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, clearAuthStorage } from '@/lib/supabaseClient'
 import Cookies from 'js-cookie'
 import { User } from '../types/user'
 import { syncAuthToken } from '@/lib/supabaseClient'
@@ -37,6 +37,9 @@ export const clearAuthCookies = () => {
   Cookies.remove('access_token', { domain: COOKIE_OPTIONS.domain })
   Cookies.remove('refresh_token', { domain: COOKIE_OPTIONS.domain })
   localStorage.removeItem('token')
+  
+  // Limpar o armazenamento do Supabase
+  clearAuthStorage()
 }
 
 /**
@@ -72,6 +75,9 @@ export const checkSession = async () => {
  */
 export const loginWithEmail = async (email: string, password: string) => {
   try {
+    // Limpar qualquer estado de autenticação anterior
+    clearAuthCookies();
+    
     console.log('Tentando login com:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -203,46 +209,29 @@ export const getUserProfile = async (userId: string) => {
       return null
     }
     
-    // Tenta buscar o status dos formulários, mas não falha se a tabela não existir
+    // Tenta buscar o status dos formulários, mas com tratamento de erro simplificado
     let statusData = null;
+    
     try {
       const { data: fetchedStatus, error: statusError } = await supabase
         .from('user_status')
         .select('alimentar_completed, treino_completed')
         .eq('user_id', userId)
-        .maybeSingle()
+        .maybeSingle();
       
+      // Se não houver erro, armazena os dados
       if (!statusError) {
         statusData = fetchedStatus;
       } else {
-        console.warn('Status dos formulários não encontrado, criando valores padrão')
+        // Se a tabela não existir, apenas registra o erro e continua
+        console.warn('Status dos formulários não encontrado, usando valores padrão');
       }
     } catch (statusFetchError) {
-      console.warn('Erro ao buscar status dos formulários:', statusFetchError)
+      // Em caso de erro, apenas registra e continua
+      console.warn('Erro ao buscar status dos formulários:', statusFetchError);
     }
     
-    // Se a tabela user_status não existe ou não tem dados para esse usuário,
-    // tenta criar um registro para ele
-    if (!statusData) {
-      try {
-        // Criar entrada na tabela de status com valores padrão
-        const { error: createError } = await supabase
-          .from('user_status')
-          .insert({
-            user_id: userId,
-            alimentar_completed: false,
-            treino_completed: false
-          })
-          
-        if (createError && createError.code !== '42P01') { // 42P01 é "tabela não existe"
-          console.warn('Erro ao criar status do usuário:', createError)
-        }
-      } catch (createError) {
-        console.warn('Erro ao criar status do usuário:', createError)
-      }
-    }
-    
-    // Combina os dados do perfil com o status dos formulários
+    // Combina os dados do perfil com o status dos formulários (usando valores padrão se necessário)
     return {
       id: data.id,
       nome: data.nome || 'Usuário',
@@ -252,7 +241,7 @@ export const getUserProfile = async (userId: string) => {
       is_admin: data.is_admin || false,
       formulario_alimentar_preenchido: data.formulario_alimentar_preenchido || false,
       formulario_treino_preenchido: data.formulario_treino_preenchido || false,
-      // Adiciona os campos de formulários do user_status se disponíveis
+      // Usa valores padrão se statusData não estiver disponível
       alimentar_completed: statusData?.alimentar_completed || false,
       treino_completed: statusData?.treino_completed || false,
       // Adiciona URL do avatar
@@ -304,32 +293,37 @@ export const updateUserProfile = async (userId: string, data: Partial<User>) => 
     
     console.log('Perfil atualizado com sucesso');
     
-    // Se temos dados de formulários, atualizamos também na tabela de status
+    // Se temos dados de formulários, tenta atualizá-los na tabela de status, mas não falha se não existir
     if (data.alimentar_completed !== undefined || data.treino_completed !== undefined) {
-      const statusUpdateData: Record<string, any> = {};
-      
-      if (data.alimentar_completed !== undefined) {
-        statusUpdateData.alimentar_completed = data.alimentar_completed;
-      }
-      
-      if (data.treino_completed !== undefined) {
-        statusUpdateData.treino_completed = data.treino_completed;
-      }
-      
-      if (Object.keys(statusUpdateData).length > 0) {
-        console.log('Atualizando status dos formulários:', statusUpdateData);
+      try {
+        const statusUpdateData: Record<string, any> = {};
         
-        const { error: statusError } = await supabase
-          .from('user_status')
-          .update(statusUpdateData)
-          .eq('user_id', userId);
-          
-        if (statusError) {
-          console.error('Erro ao atualizar status dos formulários:', statusError);
-          return { success: false, error: statusError.message };
+        if (data.alimentar_completed !== undefined) {
+          statusUpdateData.alimentar_completed = data.alimentar_completed;
         }
         
-        console.log('Status dos formulários atualizado com sucesso');
+        if (data.treino_completed !== undefined) {
+          statusUpdateData.treino_completed = data.treino_completed;
+        }
+        
+        if (Object.keys(statusUpdateData).length > 0) {
+          console.log('Atualizando status dos formulários:', statusUpdateData);
+          
+          const { error: statusError } = await supabase
+            .from('user_status')
+            .update(statusUpdateData)
+            .eq('user_id', userId);
+            
+          if (statusError) {
+            // Se for erro de tabela não existente, apenas registra
+            console.warn('Erro ao atualizar status dos formulários:', statusError.message);
+          } else {
+            console.log('Status dos formulários atualizado com sucesso');
+          }
+        }
+      } catch (statusError) {
+        // Captura erros mas não falha o processo principal
+        console.warn('Erro ao atualizar status dos formulários:', statusError);
       }
     }
     

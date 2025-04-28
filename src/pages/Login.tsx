@@ -116,29 +116,12 @@ const Login = () => {
       
       toast.success("Login realizado com sucesso!");
       
-      // Verificar e corrigir possíveis problemas de autenticação
-      try {
-        const fixResult = await fixAuthIssues();
-        console.log('[Login] Resultado da correção de autenticação:', fixResult);
-      } catch (authFixError) {
-        console.error('[Login] Erro ao verificar autenticação:', authFixError);
-      }
-      
       // Usar from do state ou redirecionar para dashboard
       const from = (location.state as any)?.from?.pathname || "/dashboard";
       console.log('[Login] Redirecionando para:', from);
       
       // Aguardar um pouco para garantir que o estado de autenticação seja atualizado
-      setTimeout(() => {
-        // Verificar token novamente antes de navegar
-        const finalToken = localStorage.getItem("token");
-        if (finalToken) {
-          navigate(from, { replace: true });
-        } else {
-          console.error('[Login] Token perdido antes da navegação');
-          toast.error("Erro de sessão. Por favor, tente fazer login novamente.");
-        }
-      }, 500);
+      setTimeout(() => navigate(from, { replace: true }), 500);
       
     } catch (error: any) {
       console.error('[Login] Erro não tratado durante o login:', error);

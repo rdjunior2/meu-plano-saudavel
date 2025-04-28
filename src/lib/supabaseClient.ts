@@ -7,7 +7,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ykepyxcjsnvesb
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrZXB5eGNqc252ZXNia3V4Z212Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NTAxNDQsImV4cCI6MjA2MDMyNjE0NH0.zAHo1XNQBmvyxhmlxD3BjNRiCrQt8cIzoYI6F5iLbLc'
 
 // Nomes consistentes para o armazenamento da sessão no localStorage
-const AUTH_STORAGE_KEY = 'meu-plano-saude-auth-storage';
+const AUTH_STORAGE_KEY = 'sb-ykepyxcjsnvesbkuxgmv-auth';
 
 // Verifica a validade do JWT durante desenvolvimento
 if (import.meta.env.DEV) {
@@ -40,8 +40,8 @@ export const syncAuthToken = () => {
       try {
         const session = JSON.parse(supabaseSession);
         // Se tiver uma sessão ativa, garante que o token também esteja disponível
-        if (session?.session?.access_token) {
-          localStorage.setItem('token', session.session.access_token);
+        if (session?.currentSession?.access_token) {
+          localStorage.setItem('token', session.currentSession.access_token);
           console.log('[Supabase] Token sincronizado com sucesso do Supabase para localStorage');
         } else {
           console.warn('[Supabase] Sessão encontrada, mas sem access_token');
@@ -103,6 +103,17 @@ export const initAndVerifySession = async () => {
   }
 };
 
+// Função para limpar o armazenamento de autenticação e tokens
+export const clearAuthStorage = () => {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('token');
+    console.log('[Supabase] Armazenamento de autenticação limpo');
+  } catch (error) {
+    console.error('[Supabase] Erro ao limpar armazenamento:', error);
+  }
+};
+
 export const supabase = (() => {
   if (!supabaseInstance) {
     try {
@@ -148,7 +159,7 @@ export const supabase = (() => {
 export default supabase;
 
 // Logger para rastrear problema de autenticação
-const logEnhancedAuthInfo = () => {
+export const logEnhancedAuthInfo = () => {
   const storedSession = localStorage.getItem(AUTH_STORAGE_KEY);
   const token = localStorage.getItem('token');
   
@@ -163,7 +174,7 @@ const logEnhancedAuthInfo = () => {
   if (token && storedSession) {
     try {
       const parsedSession = JSON.parse(storedSession);
-      authConsistency.consistent = token === parsedSession?.session?.access_token;
+      authConsistency.consistent = token === parsedSession?.currentSession?.access_token;
     } catch (e) {
       console.error("Erro ao analisar sessão armazenada:", e);
     }
@@ -180,32 +191,23 @@ const logEnhancedAuthInfo = () => {
     try {
       const parsedSession = JSON.parse(storedSession);
       console.log("Detalhes da sessão:", {
-        expiresAt: parsedSession?.session?.expires_at,
-        provider: parsedSession?.session?.provider,
-        userAud: parsedSession?.session?.user?.aud
+        expiresAt: parsedSession?.currentSession?.expires_at,
+        provider: parsedSession?.currentSession?.provider,
+        userAud: parsedSession?.currentSession?.user?.aud
       });
       
       // Detalhes do usuário
       console.log("Detalhes do usuário:", {
-        id: parsedSession?.session?.user?.id,
-        email: parsedSession?.session?.user?.email,
-        phone: parsedSession?.session?.user?.phone,
-        lastSignInAt: parsedSession?.session?.user?.last_sign_in_at
+        id: parsedSession?.currentSession?.user?.id,
+        email: parsedSession?.currentSession?.user?.email,
+        phone: parsedSession?.currentSession?.user?.phone,
+        lastSignInAt: parsedSession?.currentSession?.user?.last_sign_in_at
       });
     } catch (e) {
       console.error("Erro ao analisar sessão para diagnóstico:", e);
     }
   }
   
-  // Não podemos acessar diretamente o authStore, então apenas mostramos o que sabemos
-  console.log("Estado detalhado dos tokens:", {
-    tokenExiste: !!token,
-    sessaoExiste: !!storedSession
-  });
-  
-  console.log("✅ Estado de autenticação está correto");
-  
-  // Retornar resultado para interface
   return {
     hasToken: !!token,
     hasStoredSession: !!storedSession,

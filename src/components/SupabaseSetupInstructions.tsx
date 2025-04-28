@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Dialog,
   DialogContent,
@@ -14,9 +14,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 
 interface SupabaseSetupInstructionsProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   missingColumns?: string[];
+  onComplete?: () => void;
 }
 
 const SQL_SCRIPT = `-- Adicionar colunas necessárias se não existirem
@@ -67,11 +68,18 @@ BEGIN
 END $$;`;
 
 const SupabaseSetupInstructions: React.FC<SupabaseSetupInstructionsProps> = ({ 
-  open, 
-  onOpenChange,
-  missingColumns = [] 
+  open: propOpen, 
+  onOpenChange: propOnOpenChange,
+  missingColumns = [],
+  onComplete
 }) => {
   const { toast } = useToast();
+  // Gerenciar estado interno se não fornecido como prop
+  const [internalOpen, setInternalOpen] = useState(true);
+  
+  // Usar estado do componente pai se fornecido, caso contrário usar estado interno
+  const open = propOpen !== undefined ? propOpen : internalOpen;
+  const onOpenChange = propOnOpenChange || setInternalOpen;
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(SQL_SCRIPT).then(() => {
@@ -87,6 +95,13 @@ const SupabaseSetupInstructions: React.FC<SupabaseSetupInstructionsProps> = ({
       return "colunas necessárias";
     }
     return missingColumns.map(col => `<code>${col}</code>`).join(', ');
+  };
+  
+  const handleClose = () => {
+    onOpenChange(false);
+    if (onComplete) {
+      onComplete();
+    }
   };
 
   return (
@@ -139,7 +154,7 @@ const SupabaseSetupInstructions: React.FC<SupabaseSetupInstructionsProps> = ({
         </div>
         
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleClose}>
             Fechar
           </Button>
           <Button onClick={copyToClipboard}>

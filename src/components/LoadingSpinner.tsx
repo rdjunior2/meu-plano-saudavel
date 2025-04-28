@@ -5,17 +5,32 @@ import { motion } from 'framer-motion';
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  color?: 'emerald' | 'sky';
 }
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
   size = 'md',
-  className 
+  className,
+  color = 'emerald'
 }) => {
   const sizeClasses = {
     sm: 'h-8 w-8',
     md: 'h-16 w-16',
     lg: 'h-24 w-24'
   };
+  
+  // Classes de cor para o spinner
+  const borderClasses = color === 'emerald' 
+    ? 'border-t-emerald-500 border-emerald-100' 
+    : 'border-t-sky-500 border-sky-100';
+    
+  const bgClasses = color === 'emerald' 
+    ? 'bg-emerald-100/20' 
+    : 'bg-sky-100/20';
+    
+  const textClasses = color === 'emerald' 
+    ? 'text-emerald-700' 
+    : 'text-sky-700';
 
   return (
     <div className={cn('flex flex-col items-center justify-center min-h-[70vh]', className)}>
@@ -28,7 +43,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             ease: "linear"
           }}
           className={cn(
-            'rounded-full border-4 border-t-emerald-500 border-emerald-100',
+            'rounded-full border-4',
+            borderClasses,
             sizeClasses[size]
           )}
         />
@@ -41,14 +57,14 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             repeatType: "reverse",
             ease: "easeInOut"
           }}
-          className="absolute inset-0 rounded-full bg-emerald-100/20"
+          className={cn("absolute inset-0 rounded-full", bgClasses)}
         />
       </div>
       <motion.p 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.5 }}
-        className="mt-4 text-emerald-700 font-medium"
+        className={cn("mt-4 font-medium", textClasses)}
       >
         Carregando...
       </motion.p>

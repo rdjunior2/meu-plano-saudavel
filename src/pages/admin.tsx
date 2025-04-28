@@ -1,57 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import AdminPanel from '@/components/AdminPanel'
 import { Toaster } from 'sonner'
+import { AlertCircle, Users, ClipboardList, Bell, LayoutDashboard } from 'lucide-react'
+import { useAuthStore } from '@/stores/authStore'
+import DashboardLayout from '@/components/DashboardLayout'
 
+/**
+ * Página de gerenciamento de planos pendentes
+ */
 export default function AdminPage() {
+  const { user } = useAuthStore()
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    checkAuth()
-  }, [])
-
-  async function checkAuth() {
-    try {
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error('Não autenticado')
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError || !profile?.is_admin) {
-        throw new Error('Acesso não autorizado')
-      }
-    } catch (error) {
-      console.error('Erro de autenticação:', error)
-      navigate('/')
-    } finally {
-      setIsLoading(false)
+    // Verificar se o usuário tem permissões de admin
+    if (user && !user.is_admin) {
+      navigate('/dashboard')
     }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    )
-  }
+  }, [user, navigate])
 
   return (
-    <>
-      <Toaster position="top-right" />
-      <AdminPanel />
-    </>
+    <DashboardLayout 
+      title="Gerenciamento de Planos"
+      subtitle="Ative e gerencie planos de usuários"
+      icon={<ClipboardList className="h-5 w-5 text-emerald-600" />}
+      gradient="subtle"
+      isAdmin={true}
+    >
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
+        <AdminPanel />
+      </div>
+    </DashboardLayout>
   )
 } 

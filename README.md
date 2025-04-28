@@ -1,148 +1,139 @@
-# Welcome to your Lovable project
+# Meu Plano - Aplicação de Gerenciamento de Planos Nutricionais e de Treino
 
-## Project info
+## Informações do Projeto
 
 **URL**: https://lovable.dev/projects/a9a0413f-0572-4957-b1d0-ffc3a9240dc1
 
-## How can I edit this code?
+## Índice
+1. [Tecnologias Utilizadas](#tecnologias-utilizadas)
+2. [Configuração do Ambiente](#configuração-do-ambiente)
+3. [Desenvolvimento](#desenvolvimento)
+4. [Produção](#produção)
+5. [Sistema de Backup](#sistema-de-backup)
+6. [Correções e Migrações](#correções-e-migrações)
+7. [Estrutura do Projeto](#estrutura-do-projeto)
+8. [Domínio Personalizado](#domínio-personalizado)
 
-There are several ways of editing your application.
+## Tecnologias Utilizadas
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Vite
+- **Estilização**: Tailwind CSS, shadcn-ui
+- **Backend/API**: Supabase (Auth, Database, Storage, Functions)
+- **Gerenciamento de Estado**: Zustand
+- **Roteamento**: React Router
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a9a0413f-0572-4957-b1d0-ffc3a9240dc1) and start prompting.
+## Configuração do Ambiente
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Instalação Local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clonar o repositório
+git clone <URL_DO_REPOSITÓRIO>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navegar até o diretório do projeto
+cd meu-plano
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Instalar dependências
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Edição no GitHub
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Navegue até o arquivo desejado
+- Clique no botão "Edit" (ícone de lápis)
+- Faça suas alterações e confirme as mudanças
 
-**Use GitHub Codespaces**
+### GitHub Codespaces
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Navegue até a página principal do repositório
+- Clique no botão "Code" (botão verde)
+- Selecione a guia "Codespaces"
+- Clique em "New codespace" para iniciar um novo ambiente
 
-## What technologies are used for this project?
+## Desenvolvimento
 
-This project is built with:
+```sh
+# Iniciar servidor de desenvolvimento
+npm run dev
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Executar testes
+npm test
 
-## How can I deploy this project?
+# Verificar linting
+npm run lint
+```
 
-Simply open [Lovable](https://lovable.dev/projects/a9a0413f-0572-4957-b1d0-ffc3a9240dc1) and click on Share -> Publish.
+## Produção
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+# Compilar para produção
+npm run build
 
-Yes it is!
+# Visualizar build de produção localmente
+npm run preview
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Deploy via Lovable
+# Acesse https://lovable.dev/projects/a9a0413f-0572-4957-b1d0-ffc3a9240dc1
+# e clique em Share -> Publish
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Sistema de Backup
 
-## Como fazer backup do projeto
-
-Para realizar backups do projeto, você tem as seguintes opções:
-
-### Backup dos arquivos do projeto
-
+### Backup do Código-Fonte
 ```sh
 npm run backup
 ```
+Este comando cria um arquivo ZIP contendo todo o código-fonte (exceto node_modules, dist, etc) na pasta `backups/`.
 
-Este comando criará um arquivo zip contendo todos os arquivos do projeto (exceto node_modules, dist, .git e outros diretórios temporários) no diretório `backups` na raiz do projeto. O nome do arquivo seguirá o formato `backup_AAAA-MM-DD_HH-MM.zip`.
-
-### Backup do banco de dados Supabase
-
+### Backup do Banco de Dados
 ```sh
 npm run backup:db
 ```
+Este comando exporta migrações e metadados do Supabase para `backups/database/`.
 
-Este comando fará um backup das migrações do Supabase e tentará exportar os metadados do banco de dados (requer Supabase CLI). Os arquivos serão salvos no diretório `backups/database`.
-
-### Backup completo (arquivos + banco de dados)
-
+### Backup Completo
 ```sh
 npm run backup:all
 ```
+Executa tanto o backup do código quanto do banco de dados.
 
-Este comando executará tanto o backup dos arquivos quanto o backup do banco de dados em sequência.
+### Restauração de Backup
 
-O backup é uma boa prática para preservar o estado atual do projeto e pode ser usado para restaurar o projeto em caso de problemas ou para transferir o projeto para outro ambiente.
+1. Extraia o conteúdo do arquivo ZIP para uma pasta limpa
+2. Execute `npm install` para instalar as dependências
+3. Configure as variáveis de ambiente necessárias
+4. Execute as migrações do banco de dados, se necessário
 
-Para restaurar um backup de arquivos, basta descompactar o arquivo zip em um diretório vazio e executar `npm install` para reinstalar as dependências.
+## Correções e Migrações
 
-## Correções de Erros
+### Correção de Erro 404 em Endpoints do Supabase
 
-### Erro 404 em endpoints do Supabase
-
-Foi identificado um erro 404 ao acessar a tabela `user_status` e a função RPC `get_user_purchase_status`. Para corrigir esse problema, execute a migração SQL localizada em `src/scripts/migration-create-user-status.sql` no banco de dados do Supabase.
-
-#### Como executar a migração:
+Para corrigir problemas com a tabela `user_status` e a função RPC `get_user_purchase_status`:
 
 1. Acesse o painel de administração do Supabase
 2. Navegue até SQL Editor
 3. Cole o conteúdo do arquivo `src/scripts/migration-create-user-status.sql`
 4. Execute o script
 
-Esta migração irá:
-- Criar a tabela `user_status` para armazenar o status dos formulários preenchidos por cada usuário
-- Criar a função RPC `get_user_purchase_status` para obter estatísticas de compras do usuário
+## Estrutura do Projeto
 
-Após executar esta migração, o erro 404 não deve mais ocorrer.
+O projeto segue uma estrutura organizada por funcionalidades:
 
-## Instalação
+- `/src/components` - Componentes reutilizáveis
+- `/src/pages` - Páginas da aplicação
+- `/src/services` - Serviços para comunicação com APIs
+- `/src/stores` - Gerenciamento de estado com Zustand
+- `/src/hooks` - Hooks personalizados
+- `/src/utils` - Funções utilitárias
+- `/src/types` - Definições de tipos TypeScript
+- `/src/assets` - Recursos estáticos (imagens, etc.)
 
-```bash
-npm install
-```
+## Domínio Personalizado
 
-## Execução em desenvolvimento
-
-```bash
-npm run dev
-```
-
-## Build para produção
-
-```bash
-npm run build
-```
-
-## Visualização da build de produção
-
-```bash
-npm run preview
-```
+Para conectar um domínio personalizado:
+1. Navegue até Project > Settings > Domains
+2. Clique em Connect Domain
+3. Siga as instruções em [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
