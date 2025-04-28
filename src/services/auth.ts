@@ -281,14 +281,25 @@ export const updateUserProfile = async (userId: string, data: Partial<User>) => 
     
     console.log('Campos a serem atualizados:', updateData);
     
-    const { error } = await supabase
+    // Primeiro tenta atualizar na tabela 'profiles'
+    const { error: profilesError } = await supabase
       .from('profiles')
       .update(updateData)
       .eq('id', userId);
       
-    if (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      return { success: false, error: error.message };
+    // Se ocorrer erro, tenta na tabela 'perfis'
+    if (profilesError) {
+      console.log('Erro ao atualizar na tabela profiles, tentando tabela perfis:', profilesError);
+      
+      const { error: perfisError } = await supabase
+        .from('perfis')
+        .update(updateData)
+        .eq('id', userId);
+        
+      if (perfisError) {
+        console.error('Erro ao atualizar perfil em ambas as tabelas:', perfisError);
+        return { success: false, error: perfisError.message };
+      }
     }
     
     console.log('Perfil atualizado com sucesso');

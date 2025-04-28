@@ -92,18 +92,30 @@ const AvatarUpload = ({
       });
       
       // Atualizar o avatar_url no banco de dados
-      const { error, data } = await supabase
+      const { error: profilesError, data } = await supabase
         .from('profiles')
         .update({ avatar_url: result.url })
         .eq('id', user.id)
         .select();
         
-      if (error) {
-        console.error('Erro ao atualizar avatar_url no banco:', error);
-        throw new Error('Não foi possível salvar o avatar no banco de dados');
+      if (profilesError) {
+        console.log('Erro ao atualizar avatar_url na tabela profiles, tentando tabela perfis:', profilesError);
+        
+        const { error: perfisError, data: perfisData } = await supabase
+          .from('perfis')
+          .update({ avatar_url: result.url })
+          .eq('id', user.id)
+          .select();
+          
+        if (perfisError) {
+          console.error('Erro ao atualizar avatar_url em ambas as tabelas:', perfisError);
+          throw new Error('Não foi possível salvar o avatar no banco de dados');
+        }
+        
+        console.log('Avatar atualizado com sucesso no banco (tabela perfis):', perfisData);
+      } else {
+        console.log('Avatar atualizado com sucesso no banco (tabela profiles):', data);
       }
-      
-      console.log('Avatar atualizado com sucesso no banco:', data);
       
       // Remover avatares antigos do storage
       const cleanupResult = await removeOldAvatars(user.id, result.url);
@@ -408,13 +420,61 @@ const UserProfile: React.FC = () => {
   const fetchUserData = async () => {
     if (!user) return;
     
-    setUserData({
-      nome: user.nome || '',
-      telefone: user.telefone || '',
-      email: user.email || '',
-      avatar_url: user.avatar_url || ''
-    });
-    setLoading(false);
+    try {
+      // Busca dados da tabela profiles primeiro
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+        
+      // Se houver erro, tenta na tabela perfis
+      if (profilesError) {
+        console.log('Erro ao buscar na tabela profiles, tentando tabela perfis:', profilesError);
+        
+        const { data: perfisData, error: perfisError } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (perfisError) {
+          console.error('Erro ao buscar dados em ambas as tabelas:', perfisError);
+          // Continua usando os dados do store
+        } else if (perfisData) {
+          // Usa os dados da tabela perfis
+          setUserData({
+            nome: perfisData.nome || user.nome || '',
+            telefone: perfisData.telefone || user.telefone || '',
+            email: perfisData.email || user.email || '',
+            avatar_url: perfisData.avatar_url || user.avatar_url || ''
+          });
+          console.log('Dados carregados da tabela perfis:', perfisData);
+        }
+      } else if (profilesData) {
+        // Usa os dados da tabela profiles
+        setUserData({
+          nome: profilesData.nome || user.nome || '',
+          telefone: profilesData.telefone || user.telefone || '',
+          email: profilesData.email || user.email || '',
+          avatar_url: profilesData.avatar_url || user.avatar_url || ''
+        });
+        console.log('Dados carregados da tabela profiles:', profilesData);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do usuário:', error);
+    } finally {
+      // Se for falhar completamente, usa os dados do store de qualquer forma
+      if (!userData.nome && !userData.telefone) {
+        setUserData({
+          nome: user.nome || '',
+          telefone: user.telefone || '',
+          email: user.email || '',
+          avatar_url: user.avatar_url || ''
+        });
+      }
+      setLoading(false);
+    }
   };
 
   const fetchFormStatus = async () => {
@@ -491,11 +551,29 @@ const UserProfile: React.FC = () => {
       // Adiciona telefone (já formatado)
       updateData.telefone = telefoneFormatado;
       
-      // Atualiza o perfil no banco de dados
-      const { error } = await supabase
+      console.log('Tentando atualizar perfil com os dados:', updateData);
+      console.log('ID do usuário:', user.id);
+      
+      // Verifica se está usando a tabela correta (profiles vs perfis)
+      let error = null;
+      
+      // Primeira tentativa na tabela 'profiles'
+      const { error: profilesError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', user.id);
+      
+      // Se ocorrer erro, tenta na tabela 'perfis'
+      if (profilesError) {
+        console.log('Erro ao atualizar na tabela profiles, tentando tabela perfis:', profilesError);
+        
+        const { error: perfisError } = await supabase
+          .from('perfis')
+          .update(updateData)
+          .eq('id', user.id);
+        
+        error = perfisError;
+      }
       
       if (error) {
         console.error('Erro ao atualizar perfil:', error);

@@ -38,28 +38,43 @@ export const getUserById = async (userId: string): Promise<User | null> => {
  */
 export const updateUser = async (userId: string, userData: Partial<User>) => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        nome: userData.nome,
-        telefone: userData.telefone,
-        email: userData.email,
-        status_geral: userData.status,
-        is_admin: userData.is_admin,
-        formulario_alimentar_preenchido: userData.formulario_alimentar_preenchido,
-        formulario_treino_preenchido: userData.formulario_treino_preenchido
-      })
-      .eq('id', userId)
+    console.log('Tentando atualizar usuário no serviço users.ts:', userData);
     
-    if (error) {
-      console.error('Erro ao atualizar usuário:', error)
-      return { success: false, error: error.message }
+    const updateData = {
+      nome: userData.nome,
+      telefone: userData.telefone,
+      email: userData.email,
+      status_geral: userData.status,
+      is_admin: userData.is_admin,
+      formulario_alimentar_preenchido: userData.formulario_alimentar_preenchido,
+      formulario_treino_preenchido: userData.formulario_treino_preenchido
+    };
+    
+    // Primeiro tenta atualizar na tabela 'profiles'
+    const { error: profilesError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId);
+    
+    // Se ocorrer erro, tenta na tabela 'perfis'
+    if (profilesError) {
+      console.log('Erro ao atualizar na tabela profiles, tentando tabela perfis:', profilesError);
+      
+      const { error: perfisError } = await supabase
+        .from('perfis')
+        .update(updateData)
+        .eq('id', userId);
+        
+      if (perfisError) {
+        console.error('Erro ao atualizar usuário em ambas as tabelas:', perfisError);
+        return { success: false, error: perfisError.message };
+      }
     }
     
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('Erro ao atualizar usuário:', error)
-    return { success: false, error: 'Ocorreu um erro inesperado.' }
+    console.error('Erro ao atualizar usuário:', error);
+    return { success: false, error: 'Ocorreu um erro inesperado.' };
   }
 }
 

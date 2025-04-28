@@ -335,4 +335,31 @@ A refatoração inicial focou na limpeza do projeto e na modularização dos com
 3. Melhorar a legibilidade e compreensão do código
 4. Permitir reutilização de componentes em diferentes partes da aplicação
 
-As próximas etapas incluirão a refatoração dos demais componentes extensos, seguida pela consolidação dos serviços e stores da aplicação. 
+As próximas etapas incluirão a refatoração dos demais componentes extensos, seguida pela consolidação dos serviços e stores da aplicação.
+
+## Correção do Problema de Atualização de Perfil
+
+**Data:** 10/08/2024
+
+**Problema:** Foi identificado um problema onde o usuário não conseguia atualizar suas informações de perfil ao acessar o aplicativo online. O erro estava relacionado à inconsistência entre as tabelas `profiles` e `perfis` no banco de dados Supabase.
+
+**Solução implementada:**
+
+1. **Modificações no código cliente:**
+   - Modificamos as funções de atualização de perfil para tentar atualizar os dados em ambas as tabelas (`profiles` e `perfis`)
+   - Implementamos fallbacks para garantir que, se uma tabela falhar, a outra seja utilizada
+   - Adicionamos logs detalhados para facilitar a depuração
+
+2. **Migração SQL para consistência de dados:**
+   - Criamos uma migração SQL (`20240810000000_fix_profiles_perfis_issue.sql`) que:
+     - Garante que ambas as tabelas existam com estruturas semelhantes
+     - Adiciona triggers para manter os dados sincronizados entre as tabelas
+     - Implementa uma função para sincronizar automaticamente as atualizações
+     - Realiza uma sincronização inicial de dados entre as tabelas
+
+3. **Melhoria na robustez da aplicação:**
+   - A aplicação agora verifica ambas as tabelas ao carregar os dados do usuário
+   - Os dados são mesclados para garantir que tenhamos as informações mais atualizadas
+   - O tratamento de erros foi aprimorado para fornecer mensagens mais claras
+
+Esta solução mantém a compatibilidade com o modelo de banco de dados atual, enquanto corrige o problema de atualização do perfil e garante que futuras atualizações funcionem corretamente, independentemente de qual tabela está sendo utilizada. 
