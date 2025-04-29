@@ -14,6 +14,7 @@ import { Mail, Lock, User, Shield, ArrowRight, CheckCircle, Zap } from 'lucide-r
 import { supabase } from '@/lib/supabaseClient';
 import { logEvent, LogSeverity } from '../services/logs';
 import { debugAuthState, fixAuthIssues } from '../utils/authDebug';
+import AuthLayout from '@/layouts/AuthLayout';
 
 const loginSchema = z.object({
   email: z.string()
@@ -196,172 +197,85 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen relative bg-gray-950 overflow-hidden py-8">
-      {/* Elementos decorativos de fundo */}
-      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px]"></div>
-      
-      <div className="w-full flex flex-col items-center justify-center py-4">
-        <div className="w-full max-w-md px-4 md:px-0">
-          <div className="text-center mb-6">
-            <h1 className="text-4xl font-bold text-white drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]">
-              Transforme Seu Corpo, <span className="text-emerald-400">Transforme Sua Vida</span>
-            </h1>
-            <div className="h-1 w-32 bg-gradient-to-r from-green-500 to-emerald-500 mx-auto mt-4 rounded-full"></div>
-          </div>
-          
-          <Card className="border-none shadow-[0_0_20px_rgba(34,197,94,0.4)] bg-gray-900/80 backdrop-blur-sm animate-fade-in">
-            <CardHeader className="space-y-1 pb-4 border-b border-green-500/20">
-              <CardTitle className="text-2xl font-bold text-center text-white">Login</CardTitle>
-              <CardDescription className="text-center text-emerald-200">
-                Entre para acessar seu plano personalizado
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-emerald-300 font-medium">Email</FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <Mail className="absolute left-3 top-2.5 h-5 w-5 text-green-400 transition-colors group-hover:text-emerald-300" />
-                            <Input 
-                              placeholder="seu@email.com" 
-                              className="pl-10 bg-gray-800 border-green-500/30 text-white focus:border-green-500 focus:ring-1 focus:ring-emerald-500 shadow-[0_0_5px_rgba(34,197,94,0.3)] transition-all" 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-red-400 text-sm" />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-emerald-300 font-medium">Senha</FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <Lock className="absolute left-3 top-2.5 h-5 w-5 text-green-400 transition-colors group-hover:text-emerald-300" />
-                            <Input 
-                              type="password" 
-                              className="pl-10 bg-gray-800 border-green-500/30 text-white focus:border-green-500 focus:ring-1 focus:ring-emerald-500 shadow-[0_0_5px_rgba(34,197,94,0.3)] transition-all" 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-red-400 text-sm" />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="mt-6">
-                    <Button 
-                      type="submit" 
-                      className="relative w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-medium py-2 overflow-hidden transition-all duration-300"
-                      disabled={isLoading}
-                    >
-                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer"></span>
-                      {isLoading ? (
-                        <span className="flex items-center justify-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Entrando...
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-center relative z-10">
-                          Acessar Meu Plano <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  <div className="flex justify-center pt-1">
-                    <Button 
-                      variant="link"
-                      type="button"
-                      className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-                      onClick={handlePasswordReset}
-                      disabled={isResetLoading}
-                    >
-                      {isResetLoading ? (
-                        <span className="flex items-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Enviando...
-                        </span>
-                      ) : "Esqueceu sua senha?"}
-                    </Button>
-                  </div>
-                  
-                  <div className="relative flex items-center justify-center my-4">
-                    <div className="absolute w-full border-t border-gray-600"></div>
-                    <div className="relative bg-gray-900 px-4 text-xs text-gray-400">OU</div>
-                  </div>
-                  
-                  <Button
-                    type="button"
-                    className="w-full bg-white hover:bg-gray-100 text-gray-800 font-medium py-2 px-4 rounded-md flex items-center justify-center gap-2 border border-gray-300 transition-colors"
-                    onClick={() => navigate('/auth/google')}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24">
-                      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
-                      <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
-                      <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
-                      <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
-                    </svg>
-                    <span>Entrar com Google</span>
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-            <CardFooter className="border-t border-green-500/20 pt-4 pb-6 px-6 flex flex-col space-y-4">
-              <div className="text-center text-sm text-emerald-200">
-                Ainda não tem uma conta?{" "}
-                <Link to="/register" className="font-medium text-green-400 hover:text-emerald-300 transition-colors underline">
-                  Criar minha conta agora
-                </Link>
-              </div>
+    <AuthLayout 
+      title="Acesse sua conta" 
+      subtitle="Entre para acessar seu plano personalizado"
+      linkText="Não possui uma conta? Cadastre-se"
+      linkTo="/register"
+    >
+      <Card className="border-slate-200 shadow-md">
+        <CardContent className="pt-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-slate-700 font-medium">Email</FormLabel>
+                    <FormControl>
+                      <div className="relative group">
+                        <Mail className="absolute left-3 top-2.5 h-5 w-5 text-slate-500" />
+                        <Input 
+                          placeholder="seu@email.com" 
+                          className="pl-10 border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500" 
+                          {...field} 
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-red-500 text-sm" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-slate-700 font-medium">Senha</FormLabel>
+                    <FormControl>
+                      <div className="relative group">
+                        <Lock className="absolute left-3 top-2.5 h-5 w-5 text-slate-500" />
+                        <Input 
+                          placeholder="Sua senha" 
+                          type="password" 
+                          className="pl-10 border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500" 
+                          {...field} 
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-red-500 text-sm" />
+                  </FormItem>
+                )}
+              />
               
-              <div className="flex items-center justify-center gap-6 pt-2">
-                <div className="text-xs text-emerald-400 flex items-center">
-                  <Shield className="h-3 w-3 mr-1 text-green-400" />
-                  <span>100% seguro</span>
-                </div>
-                <div className="text-xs text-emerald-400 flex items-center">
-                  <Zap className="h-3 w-3 mr-1 text-emerald-400" />
-                  <span>Acesso imediato</span>
-                </div>
-              </div>
-            </CardFooter>
-          </Card>
-          
-          <div className="mt-8 text-center pb-8">
-            <p className="text-sm text-emerald-300 mb-2">
-              Desenvolvido pela Xsharks Tech
-            </p>
-            <p className="text-sm text-emerald-300">
-              <Link to="/termos" className="text-green-400 hover:text-emerald-300 underline">
-                Termos de Uso
-              </Link>{" "}
-              e{" "}
-              <Link to="/privacidade" className="text-green-400 hover:text-emerald-300 underline">
-                Política de Privacidade
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+              <Button 
+                type="button" 
+                variant="link" 
+                className="text-sky-600 p-0 h-auto font-normal text-sm" 
+                onClick={handlePasswordReset}
+                disabled={isResetLoading}
+              >
+                {isResetLoading ? "Enviando..." : "Esqueceu sua senha?"}
+              </Button>
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                Entrar
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </AuthLayout>
   );
 };
 

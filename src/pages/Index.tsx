@@ -58,7 +58,7 @@ const Index = () => {
                     </Button>
                   </Link>
                 )}
-                <Link to={isAuthenticated ? "/anamnese" : "/login"}>
+                <Link to={isAuthenticated ? "/dashboard" : "/login"}>
                   <Button size="lg" variant="outline" className="border-green-500 text-green-800 hover:bg-green-950/50 shadow-[0_0_5px_rgba(34,197,94,0.2)] transition-all duration-300 hover:shadow-[0_0_10px_rgba(34,197,94,0.3)] hover:scale-105">
                     Acessar Agora
                   </Button>

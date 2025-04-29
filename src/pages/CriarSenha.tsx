@@ -1,169 +1,214 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { toast } from "sonner";
+import { supabase } from '@/lib/supabaseClient';
 import { useAuthStore } from '@/stores/authStore';
-import { KeyRound, Shield } from 'lucide-react';
-
-const criarSenhaSchema = z.object({
-  password: z.string()
-    .min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
-  confirmPassword: z.string()
-    .min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "As senhas não coincidem",
-  path: ["confirmPassword"],
-});
-
-type CriarSenhaFormValues = z.infer<typeof criarSenhaSchema>;
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import AuthLayout from '@/layouts/AuthLayout';
+import { User } from '@/types/user';
 
 const CriarSenha = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { createPassword, loginWithPassword, checkUserByPhone } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [phone, setPhone] = useState("");
+  const { login } = useAuthStore();
   
-  // Extrair o telefone da URL
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const phoneParam = params.get('phone');
+    // Verificar se o usuário já está logado
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        const { data: userData } = await supabase.auth.getUser();
+        setUserEmail(userData.user?.email || null);
+      } else {
+        // Se não está logado, verificar parâmetros na URL
+        const params = new URLSearchParams(location.search);
+        const email = params.get('email');
+        const token = params.get('token');
+        
+        if (email) {
+          setUserEmail(email);
+        } else {
+          setError('Nenhum email fornecido. Impossível configurar a senha.');
+        }
+        
+        if (!token) {
+          setError('Token não encontrado. Impossível configurar a senha.');
+        }
+      }
+    };
     
-    if (!phoneParam) {
-      toast.error("Número de telefone não informado");
-      navigate('/login');
+    checkAuth();
+  }, [location]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!userEmail) {
+      setError('Email não encontrado. Impossível criar senha.');
       return;
     }
     
-    // Verificar se o usuário realmente existe e está no status correto
-    const verifyUser = async () => {
-      const { exists, status } = await checkUserByPhone(phoneParam);
-      
-      if (!exists) {
-        toast.error("Usuário não encontrado");
-        navigate('/login');
-        return;
-      }
-      
-      if (status !== 'aguardando_formulario') {
-        toast.error("Este usuário já possui senha");
-        navigate('/login');
-        return;
-      }
-      
-      setPhone(phoneParam);
-    };
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
     
-    verifyUser();
-  }, [location.search, navigate, checkUserByPhone]);
-  
-  const form = useForm<CriarSenhaFormValues>({
-    resolver: zodResolver(criarSenhaSchema),
-    defaultValues: {
-      password: "",
-      confirmPassword: "",
-    },
-  });
-
-  const onSubmit = async (values: CriarSenhaFormValues) => {
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    
     try {
-      if (!phone) return;
-      
       setIsLoading(true);
+      setError(null);
       
-      // Criar senha
-      const { success, error } = await createPassword(phone, values.password);
+      // Criar a senha para o usuário
+      const { error } = await supabase.auth.updateUser({
+        password
+      });
       
-      if (!success) {
-        toast.error(error || "Erro ao criar senha. Tente novamente.");
-        return;
+      if (error) {
+        throw new Error(error.message);
       }
       
-      toast.success("Senha criada com sucesso!");
+      // Tentar fazer login com as novas credenciais
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password
+      });
       
-      // Fazer login automático
-      const loginResult = await loginWithPassword(phone, values.password);
+      if (signInError) {
+        throw new Error(signInError.message);
+      }
       
-      if (loginResult.success) {
-        navigate('/formulario-alimentar');
+      // Se chegou aqui, o login foi bem-sucedido
+      if (signInData.session) {
+        // Atualizar o estado de autenticação - converter o tipo de usuário do Supabase para o tipo User da aplicação
+        const appUser = {
+          id: signInData.user.id,
+          email: signInData.user.email,
+          nome: signInData.user.user_metadata?.nome || 'Usuário',
+          telefone: signInData.user.user_metadata?.telefone || '',
+          status: 'ativo',
+          is_admin: signInData.user.app_metadata?.is_admin || false
+        } as User;
+        
+        login(appUser, signInData.session.access_token);
+        
+        setSuccess(true);
+        toast.success('Senha criada com sucesso! Você será redirecionado para o sistema.');
+        
+        // Redirecionar após uma pausa
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
       } else {
-        navigate('/login');
+        throw new Error('Falha ao autenticar com a nova senha.');
       }
-      
     } catch (error: any) {
-      toast.error("Erro ao criar senha. Tente novamente.");
-      console.error("Erro ao criar senha:", error);
+      console.error('Erro ao criar senha:', error);
+      setError(error.message || 'Erro ao criar senha. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 py-12 bg-gradient-to-br from-lavender-light via-white to-mint-light">
-      <Card className="w-full max-w-md mx-auto border-lavender-light/50 shadow-lg animate-fade-in">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-lavender p-3">
-              <KeyRound className="h-6 w-6 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Criar Senha</CardTitle>
-          <CardDescription className="text-center">
-            Defina uma senha para acessar sua conta
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="bg-blue-50 p-3 rounded-md mb-4 flex items-start">
-                <Shield className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
-                <p className="text-sm text-blue-700">
-                  Você precisa criar uma senha para acessar seu plano. Esta senha será usada junto com seu número de WhatsApp para fazer login.
+    <AuthLayout
+      title="Crie sua senha"
+      subtitle="Configure sua senha para acessar o sistema"
+      linkText="Já tem uma senha? Faça login"
+      linkTo="/login"
+    >
+      <Card className="border border-emerald-100">
+        <CardContent className="pt-6">
+          {success ? (
+            <Alert className="bg-emerald-50 border-emerald-200">
+              <AlertTitle className="text-emerald-700 font-medium">Senha criada com sucesso!</AlertTitle>
+              <AlertDescription className="text-emerald-600">
+                Você será redirecionado para o dashboard em instantes.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <AlertTitle className="text-red-700 font-medium">Erro</AlertTitle>
+                  <AlertDescription className="text-red-600">{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              {userEmail && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertTitle className="text-blue-700 font-medium">
+                    Criando senha para: {userEmail}
+                  </AlertTitle>
+                </Alert>
+              )}
+              
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="text-emerald-700 font-medium block">
+                  Nova senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-emerald-600" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Digite sua senha"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Sua senha deve ter pelo menos 6 caracteres
                 </p>
               </div>
               
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nova Senha</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-1.5">
+                <label htmlFor="confirmPassword" className="text-emerald-700 font-medium block">
+                  Confirmar senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-emerald-600" />
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirme sua senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+              </div>
               
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirme a Senha</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button type="submit" className="w-full bg-lavender hover:bg-lavender-dark" disabled={isLoading}>
-                {isLoading ? "Criando..." : "Criar Senha"}
+              <Button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Criando senha...' : 'Criar senha e entrar'}
               </Button>
             </form>
-          </Form>
+          )}
         </CardContent>
       </Card>
-    </div>
+    </AuthLayout>
   );
 };
 

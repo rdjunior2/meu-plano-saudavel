@@ -90,6 +90,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       animate="visible"
       variants={containerVariants}
     >
+      <Navbar />
+      
       <div className={cn(
         "flex-1 w-full",
         !noPadding && (isMobile ? "p-4 sm:p-6" : "p-6 sm:p-8"),

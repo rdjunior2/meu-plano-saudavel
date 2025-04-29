@@ -115,8 +115,9 @@ export const listUsers = async () => {
  */
 export const getUserStatus = async (userId: string) => {
   try {
+    // Usando a nova assinatura da função RPC
     const { data, error } = await supabase.rpc('get_user_purchase_status', {
-      user_id: userId
+      p_user_id: userId
     })
     
     if (error) {
@@ -126,10 +127,60 @@ export const getUserStatus = async (userId: string) => {
     
     return { 
       success: true, 
-      status: data.length > 0 ? data[0] : null 
+      status: data
     }
   } catch (error) {
     console.error('Erro ao buscar status do usuário:', error)
     return { success: false, error: 'Ocorreu um erro inesperado.' }
+  }
+}
+
+/**
+ * Obtém o status completo do usuário incluindo compra e formulários
+ */
+export const getUserFullStatus = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_full_status')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
+    if (error) {
+      console.error('Erro ao buscar status completo do usuário:', error)
+      return { success: false, error: error.message }
+    }
+    
+    return {
+      success: true,
+      status: data
+    }
+  } catch (error) {
+    console.error('Erro ao buscar status completo do usuário:', error)
+    return { success: false, error: 'Ocorreu um erro inesperado.' }
+  }
+}
+
+/**
+ * Verifica se o usuário tem acesso (assinatura ativa)
+ */
+export const checkUserAccess = async (userId: string) => {
+  try {
+    const { data, error } = await supabase.rpc('check_user_access', {
+      p_user_id: userId
+    })
+    
+    if (error) {
+      console.error('Erro ao verificar acesso do usuário:', error)
+      return { success: false, error: error.message, hasAccess: false }
+    }
+    
+    return {
+      success: true,
+      hasAccess: data
+    }
+  } catch (error) {
+    console.error('Erro ao verificar acesso do usuário:', error)
+    return { success: false, error: 'Ocorreu um erro inesperado.', hasAccess: false }
   }
 } 

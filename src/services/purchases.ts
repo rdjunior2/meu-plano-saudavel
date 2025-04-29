@@ -183,4 +183,97 @@ export const createPurchase = async (
     console.error('Erro ao criar compra:', error)
     return { success: false, error: 'Ocorreu um erro inesperado.', status: 'incompleto' }
   }
+}
+
+/**
+ * Processa webhook de pagamento 
+ * Utiliza a nova função process_payment_webhook para atualizar o status da compra do usuário
+ */
+export const processPaymentWebhook = async (
+  userId: string,
+  purchaseId: string,
+  purchaseStatus: string,
+  expirationDate?: string
+) => {
+  try {
+    // Converte string de data para objeto Date se fornecida
+    let expDate = null;
+    if (expirationDate) {
+      expDate = new Date(expirationDate).toISOString();
+    }
+    
+    const { data, error } = await supabase.rpc('process_payment_webhook', {
+      p_user_id: userId,
+      p_purchase_id: purchaseId,
+      p_purchase_status: purchaseStatus,
+      p_expiration_date: expDate
+    });
+    
+    if (error) {
+      console.error('Erro ao processar webhook de pagamento:', error);
+      return { success: false, error: error.message };
+    }
+    
+    // Verifica o status de compra atual após o processamento
+    const { error: checkError, data: statusData } = await supabase.rpc('check_purchase_status', {
+      p_user_id: userId
+    });
+    
+    if (checkError) {
+      console.error('Erro ao verificar status da compra:', checkError);
+      return { success: true, warning: 'Webhook processado, mas não foi possível verificar o status atual.' };
+    }
+    
+    return { 
+      success: true, 
+      status: statusData,
+      message: 'Webhook processado com sucesso.'
+    };
+  } catch (error) {
+    console.error('Erro ao processar webhook de pagamento:', error);
+    return { success: false, error: 'Ocorreu um erro inesperado.' };
+  }
+}
+
+/**
+ * Cria uma sessão de checkout do Stripe
+ * @param userId ID do usuário fazendo a compra
+ * @param productId ID do produto no Stripe
+ * @param mode Modo de pagamento (payment ou subscription)
+ * @param successUrl URL de sucesso após pagamento
+ * @param cancelUrl URL de cancelamento
+ */
+export const createStripeCheckout = async (
+  userId: string,
+  productId: string,
+  mode: 'payment' | 'subscription',
+  successUrl: string,
+  cancelUrl: string
+) => {
+  try {
+    // Chamar uma função Edge para criar a sessão de checkout
+    const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
+      body: {
+        userId,
+        productId,
+        mode,
+        successUrl,
+        cancelUrl
+      }
+    });
+
+    if (error) {
+      console.error('Erro ao criar sessão de checkout:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { 
+      success: true, 
+      checkoutUrl: data.url,
+      sessionId: data.id
+    };
+  } catch (error) {
+    console.error('Erro ao criar sessão de checkout:', error);
+    return { success: false, error: 'Ocorreu um erro inesperado.' };
+  }
 } 

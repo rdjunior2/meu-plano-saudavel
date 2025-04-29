@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { HardHat, ArrowLeft } from 'lucide-react';
-import AdminLayout from './AdminLayout';
+import DashboardLayout from './DashboardLayout';
 import { Button } from './ui/button';
 
 interface EmDevelopmentProps {
@@ -22,9 +22,11 @@ export default function EmDevelopment({
   const navigate = useNavigate();
   
   return (
-    <AdminLayout
+    <DashboardLayout
       title={title}
       subtitle="Recurso em desenvolvimento"
+      isAdmin={true}
+      gradient="subtle"
     >
       <div className="flex flex-col items-center justify-center py-12">
         <div className="bg-amber-50 p-8 rounded-lg border border-amber-200 max-w-md w-full text-center">
@@ -42,6 +44,6 @@ export default function EmDevelopment({
           </Button>
         </div>
       </div>
-    </AdminLayout>
+    </DashboardLayout>
   );
 } 

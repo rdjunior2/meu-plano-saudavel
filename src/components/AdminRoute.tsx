@@ -4,8 +4,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { logEvent, LogSeverity } from '@/services/logs';
 import { supabase } from '@/lib/supabaseClient';
 import LoadingSpinner from './LoadingSpinner';
-import { AlertCircle } from 'lucide-react';
-import AppLayout from './AppLayout';
+import { AlertCircle, Settings } from 'lucide-react';
+import DashboardLayout from './DashboardLayout';
+import { adminNavItems, adminRouteMetadata } from '@/features/admin/adminConfig';
 
 /**
  * Interface para as propriedades do componente AdminRoute
@@ -14,8 +15,8 @@ interface AdminRouteProps {
   children: ReactNode;
   redirectPath?: string;
   noPermissionPath?: string;
-  gradient?: boolean;
-  noPadding?: boolean;
+  title?: string;
+  subtitle?: string;
 }
 
 /**
@@ -25,8 +26,8 @@ const AdminRoute = ({
   children,
   redirectPath = "/login",
   noPermissionPath = "/",
-  gradient = true,
-  noPadding = false
+  title,
+  subtitle
 }: AdminRouteProps) => {
   const { user, isAuthenticated, isLoading: authStoreLoading } = useAuthStore();
   const [isVerifying, setIsVerifying] = useState(true);
@@ -142,15 +143,48 @@ const AdminRoute = ({
     );
   }
 
+  // Obter metadados da rota atual, com fallback para valores padrão ou props passadas
+  const getCurrentRouteMetadata = () => {
+    const exactPathMatch = adminRouteMetadata[location.pathname];
+    if (exactPathMatch) {
+      return {
+        title: title || exactPathMatch.title,
+        subtitle: subtitle || exactPathMatch.subtitle
+      };
+    }
+
+    // Procurar por correspondência parcial (para rotas com parâmetros como /admin/formularios/editar/123)
+    const matchingPath = Object.keys(adminRouteMetadata).find(path => 
+      location.pathname.startsWith(path) && path !== '/admin'
+    );
+
+    if (matchingPath) {
+      return {
+        title: title || adminRouteMetadata[matchingPath].title,
+        subtitle: subtitle || adminRouteMetadata[matchingPath].subtitle
+      };
+    }
+
+    // Fallback para props passadas ou valores padrão
+    return {
+      title: title || 'Área Administrativa',
+      subtitle: subtitle || 'Gerencie sua plataforma'
+    };
+  };
+
+  const { title: pageTitle, subtitle: pageSubtitle } = getCurrentRouteMetadata();
+
   // Se for admin, renderiza o conteúdo protegido dentro do layout para admin
   return (
-    <AppLayout
+    <DashboardLayout 
+      title={pageTitle}
+      subtitle={pageSubtitle}
       isAdmin={true}
-      gradient={gradient}
-      noPadding={noPadding}
+      gradient="subtle"
+      icon={<Settings className="h-5 w-5 text-slate-600" />}
     >
       {children}
-    </AppLayout>
+    </DashboardLayout>
   );
 };
 

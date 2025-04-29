@@ -7,8 +7,10 @@ import {
   FileText, 
   ChartBar, 
   Bell, 
-  Database,
-  Clipboard
+  Clipboard,
+  Image,
+  Utensils,
+  ShoppingBasket
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +101,20 @@ export default function AdminIndex() {
       implemented: true
     },
     {
+      title: 'Planos Alimentares',
+      description: 'Criar e gerenciar modelos de planos alimentares',
+      icon: <Utensils className="h-8 w-8 text-green-500" />,
+      path: '/admin/planos',
+      implemented: true
+    },
+    {
+      title: 'Produtos',
+      description: 'Cadastrar e gerenciar produtos e serviços',
+      icon: <ShoppingBasket className="h-8 w-8 text-orange-500" />,
+      path: '/admin/produtos',
+      implemented: true
+    },
+    {
       title: 'Planos Pendentes',
       description: 'Ativar e gerenciar planos alimentares e de treino',
       icon: <ClipboardList className="h-8 w-8 text-emerald-500" />,
@@ -124,6 +140,13 @@ export default function AdminIndex() {
       implemented: true
     },
     {
+      title: 'Banco de Imagens',
+      description: 'Gerencie as imagens utilizadas nos produtos e planos',
+      icon: <Image className="h-8 w-8 text-sky-500" />,
+      path: '/admin/imagens',
+      implemented: false
+    },
+    {
       title: 'Notificações',
       description: 'Gerenciar e enviar notificações para usuários',
       icon: <Bell className="h-8 w-8 text-amber-500" />,
@@ -146,15 +169,6 @@ export default function AdminIndex() {
       description: 'Configurações do sistema e da aplicação',
       icon: <Settings className="h-8 w-8 text-gray-700" />,
       path: '/admin/configuracoes',
-      implemented: false
-    },
-    {
-      title: 'Database',
-      description: 'Gerenciamento direto do banco de dados',
-      icon: <Database className="h-8 w-8 text-indigo-500" />,
-      path: '/admin/database',
-      badge: 'Avançado',
-      badgeColor: 'bg-red-100 text-red-800',
       implemented: false
     }
   ];
@@ -251,21 +265,15 @@ export default function AdminIndex() {
                 {module.icon}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3">
               {module.badge && (
-                <Badge className={`${module.badgeColor} font-medium`}>
+                <Badge className={`${module.badgeColor}`}>
                   {module.badge}
                 </Badge>
               )}
             </CardContent>
-            <CardFooter className="pt-0 border-t border-gray-100 flex justify-end">
-              <div className="text-sky-600 flex items-center text-sm">
-                {module.implemented ? (
-                  <>Acessar <ChevronRight className="ml-1 h-4 w-4" /></>
-                ) : (
-                  <>Em breve <ChevronRight className="ml-1 h-4 w-4" /></>
-                )}
-              </div>
+            <CardFooter className="pt-0 pb-3 flex justify-end">
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </CardFooter>
           </Card>
         ))}

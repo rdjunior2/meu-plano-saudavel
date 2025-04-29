@@ -13,6 +13,7 @@
 6. [Correções e Migrações](#correções-e-migrações)
 7. [Estrutura do Projeto](#estrutura-do-projeto)
 8. [Domínio Personalizado](#domínio-personalizado)
+9. [Funcionalidade de Assinatura e Status do Usuário](#funcionalidade-de-assinatura-e-status-do-usuário)
 
 ## Tecnologias Utilizadas
 
@@ -137,3 +138,55 @@ Para conectar um domínio personalizado:
 1. Navegue até Project > Settings > Domains
 2. Clique em Connect Domain
 3. Siga as instruções em [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Funcionalidade de Assinatura e Status do Usuário
+
+O sistema inclui recursos para gerenciar o status de assinatura e progresso do usuário:
+
+### Estrutura do Banco de Dados
+
+- **Tabela `user_status`**: Armazena dados sobre o status de compra e preenchimento de formulários
+- **Visão `user_full_status`**: Fornece uma visão completa combinando dados de perfil, status e acesso
+- **Funções RPC**:
+  - `get_user_purchase_status`: Obtém informações de compra do usuário
+  - `update_user_purchase_status`: Atualiza status de compra
+  - `update_dietary_form_status`: Atualiza status do formulário alimentar
+  - `update_training_form_status`: Atualiza status do formulário de treino
+  - `check_user_access`: Verifica se o usuário tem acesso aos recursos
+  - `process_payment_webhook`: Processa webhooks de pagamento
+
+### Integração de Pagamento
+
+O sistema está preparado para receber webhooks de plataformas de pagamento:
+
+1. Edge Function `payment-webhook`: Processa notificações de pagamento
+2. Atualização automática do status de assinatura dos usuários
+3. Verificação de expiração de assinaturas
+
+### Uso no Frontend
+
+```typescript
+// Verificar status completo do usuário
+const { data } = await supabase.from('user_full_status')
+  .select('*')
+  .eq('user_id', userId)
+  .single();
+
+// Verificar acesso
+const { data } = await supabase.rpc('check_user_access', {
+  p_user_id: userId
+});
+
+// Atualizar status de formulário
+const { data } = await supabase.rpc('update_dietary_form_status', {
+  p_user_id: userId,
+  p_completed: true
+});
+```
+
+### Sincronização de Status
+
+O sistema mantém automaticamente a sincronização entre:
+- Status de compra e acesso do usuário
+- Status de preenchimento de formulários
+- Progressão do usuário no sistema

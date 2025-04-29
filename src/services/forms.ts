@@ -38,24 +38,42 @@ export const saveFormResponse = async (formData: FormResponse) => {
       }
     }
     
-    // Atualiza o campo correspondente no perfil do usuário
-    let profileUpdate = {}
-    
+    // Atualiza o status de preenchimento dos formulários usando as novas funções
     if (formData.form_type === 'alimentar') {
-      profileUpdate = { formulario_alimentar_preenchido: true }
+      const { error: statusError } = await supabase.rpc('update_dietary_form_status', {
+        p_user_id: formData.user_id,
+        p_completed: true
+      })
+      
+      if (statusError) {
+        console.error('Erro ao atualizar status do formulário alimentar:', statusError)
+        return { 
+          success: true, 
+          warning: 'Formulário salvo, mas houve um erro ao atualizar o status do formulário.' 
+        }
+      }
     } else if (formData.form_type === 'treino') {
-      profileUpdate = { formulario_treino_preenchido: true }
+      const { error: statusError } = await supabase.rpc('update_training_form_status', {
+        p_user_id: formData.user_id,
+        p_completed: true
+      })
+      
+      if (statusError) {
+        console.error('Erro ao atualizar status do formulário de treino:', statusError)
+        return { 
+          success: true, 
+          warning: 'Formulário salvo, mas houve um erro ao atualizar o status do formulário.' 
+        }
+      }
     }
     
-    if (Object.keys(profileUpdate).length > 0) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileUpdate)
-        .eq('id', formData.user_id)
-      
-      if (profileError) {
-        console.error('Erro ao atualizar perfil:', profileError)
-      }
+    // Gerencia a progressão do usuário após preenchimento do formulário
+    const { error: progressError } = await supabase.rpc('manage_user_progress', {
+      p_user_id: formData.user_id
+    })
+    
+    if (progressError) {
+      console.error('Erro ao gerenciar progressão do usuário:', progressError)
     }
     
     return { success: true }
@@ -127,5 +145,42 @@ export const getUserForms = async (userId: string) => {
   } catch (error) {
     console.error('Erro ao listar formulários:', error)
     return { success: false, error: 'Ocorreu um erro inesperado.' }
+  }
+}
+
+/**
+ * Verifica o status de preenchimento dos formulários do usuário
+ */
+export const checkFormStatus = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_status')
+      .select('dietary_form_completed, training_form_completed')
+      .eq('user_id', userId)
+      .single()
+    
+    if (error) {
+      console.error('Erro ao verificar status dos formulários:', error)
+      return { 
+        success: false, 
+        error: error.message,
+        dietary_completed: false,
+        training_completed: false
+      }
+    }
+    
+    return { 
+      success: true, 
+      dietary_completed: data?.dietary_form_completed || false,
+      training_completed: data?.training_form_completed || false
+    }
+  } catch (error) {
+    console.error('Erro ao verificar status dos formulários:', error)
+    return { 
+      success: false, 
+      error: 'Ocorreu um erro inesperado.',
+      dietary_completed: false,
+      training_completed: false
+    }
   }
 } 

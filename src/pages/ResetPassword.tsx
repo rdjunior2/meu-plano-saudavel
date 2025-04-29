@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 
 // Componentes de interface
@@ -28,8 +28,9 @@ import * as z from 'zod';
 
 // Alerta para feedback
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, RefreshCw, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import AuthLayout from '@/layouts/AuthLayout';
 
 // Esquema de validação para o formulário
 const resetPasswordSchema = z.object({
@@ -248,318 +249,229 @@ export default function ResetPassword() {
     }
     
     if (!isSessionSet) {
-      setError('A sessão não foi configurada corretamente. Tente novamente.');
+      setError('Sua sessão não foi estabelecida. Solicite um novo link de recuperação.');
       return;
     }
     
-    setIsLoading(true);
-    setError(null);
-    
     try {
-      console.log('[ResetPassword] Tentando atualizar senha');
+      setIsLoading(true);
+      setError(null);
       
-      // Atualizar a senha do usuário
-      const { error } = await supabase.auth.updateUser({
+      console.log('[ResetPassword] Iniciando alteração de senha');
+      
+      const { error: updateError } = await supabase.auth.updateUser({
         password: data.password
       });
       
-      if (error) {
-        console.error('[ResetPassword] Erro ao atualizar senha:', error);
-        throw new Error(error.message);
+      if (updateError) {
+        console.error('[ResetPassword] Erro ao atualizar senha:', updateError);
+        setError(`Erro ao atualizar senha: ${updateError.message}`);
+        return;
       }
       
       console.log('[ResetPassword] Senha atualizada com sucesso');
       setSuccess(true);
       
-      // Garantir que o usuário esteja autenticado
-      const { data: sessionData } = await supabase.auth.getSession();
+      // Exibir mensagem de sucesso
+      toast.success('Senha redefinida com sucesso!');
       
-      // Obter dados do usuário para configuração adequada no estado
-      if (sessionData.session) {
-        const { data: userData } = await supabase.auth.getUser();
-        
-        if (userData.user) {
-          // Armazenar o token na localStorage para o AuthContext e useAuthStore
-          localStorage.setItem('token', sessionData.session.access_token);
-          
-          // Forçar um recarregamento completo da página para atualizar todos os estados
-          // Isso evita problemas de hooks e estados inconsistentes
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 1500);
-          
-          return;
-        }
-      }
-      
-      // Se não conseguiu obter a sessão, redirecionar para login após 2 segundos
+      // Redirecionar para login após algum tempo
       setTimeout(() => {
         navigate('/login');
-      }, 2000);
-    } catch (err: any) {
-      console.error('[ResetPassword] Erro ao redefinir senha:', err);
-      setError(err.message || 'Ocorreu um erro ao redefinir sua senha.');
+      }, 3000);
+    } catch (error: any) {
+      console.error('[ResetPassword] Erro inesperado ao redefinir senha:', error);
+      setError('Ocorreu um erro inesperado. Por favor, tente novamente.');
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Função para solicitar um novo link de redefinição
   const requestNewPasswordResetLink = async () => {
-    let emailToUse = userEmail;
-    
-    if (!emailToUse) {
-      // Se não temos o email do usuário, solicitar que ele informe
-      const inputEmail = prompt("Por favor, digite seu email para receber um novo link de recuperação:");
-      if (!inputEmail) {
-        toast.error("É necessário informar um email para receber o link de recuperação.");
-        return;
-      }
-      
-      // Validar o email informado
-      const emailResult = z.string().email().safeParse(inputEmail);
-      if (!emailResult.success) {
-        toast.error("Por favor, digite um email válido.");
-        return;
-      }
-      
-      emailToUse = inputEmail;
-    }
-    
-    setIsRequestingNewLink(true);
-    
     try {
-      // Determinar a URL de redirecionamento apropriada
+      setIsRequestingNewLink(true);
+      
+      // Verificar se temos o email do usuário para reenviar
+      if (!userEmail) {
+        toast.error('Email não disponível. Por favor, volte à página de login e use a opção "Esqueci minha senha".');
+        return;
+      }
+      
+      // Determinar a URL de redirecionamento
       const origin = window.location.origin;
       const redirectUrl = `${origin}/reset-password`;
       
-      console.log('[ResetPassword] Solicitando novo link:', { 
-        email: emailToUse,
-        redirectUrl
+      console.log('[ResetPassword] Enviando novo link para:', userEmail);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+        redirectTo: redirectUrl
       });
       
-      // Adicionar verificação do site URL no Supabase
-      const siteUrlsToTry = [
-        redirectUrl,
-        origin,
-        'https://meu-plano-saudavel.vercel.app/reset-password',
-        'http://localhost:3000/reset-password'
-      ];
-      
-      let requestError = null;
-      
-      // Tentar todas as URLs de redirecionamento possíveis até uma funcionar
-      for (const redirectTo of siteUrlsToTry) {
-        try {
-          console.log(`[ResetPassword] Tentando com redirectTo: ${redirectTo}`);
-          
-          const { error } = await supabase.auth.resetPasswordForEmail(emailToUse, {
-            redirectTo,
-          });
-          
-          if (!error) {
-            // Se a requisição foi bem-sucedida, sair do loop
-            requestError = null;
-            break;
-          } else {
-            requestError = error;
-            console.warn(`[ResetPassword] Falha com redirectTo ${redirectTo}:`, error);
-          }
-        } catch (err) {
-          requestError = err;
-          console.warn(`[ResetPassword] Exceção com redirectTo ${redirectTo}:`, err);
-        }
+      if (error) {
+        console.error('[ResetPassword] Erro ao solicitar novo link:', error);
+        toast.error(`Erro ao enviar novo link: ${error.message}`);
+        return;
       }
       
-      // Verificar se todas as tentativas falharam
-      if (requestError) {
-        console.error('[ResetPassword] Todas as tentativas de envio falharam:', requestError);
-        throw requestError;
-      }
-      
-      // Se chegamos aqui, significa que pelo menos uma das tentativas funcionou
       toast.success(
-        "Email de recuperação enviado! Verifique sua caixa de entrada e spam. O link expira em 1 hora.",
-        { duration: 6000 }
+        `Novo link de recuperação enviado para ${userEmail}. 
+        Verifique sua caixa de entrada e pasta de spam.`
       );
-      
-    } catch (err) {
-      console.error('[ResetPassword] Erro ao solicitar novo link:', err);
-      toast.error("Não foi possível enviar um novo link. Tente novamente mais tarde.");
+    } catch (error: any) {
+      console.error('[ResetPassword] Erro inesperado ao solicitar novo link:', error);
+      toast.error('Ocorreu um erro ao solicitar novo link. Tente novamente mais tarde.');
     } finally {
       setIsRequestingNewLink(false);
     }
   };
-  
-  // Extraindo campos do formulário para melhorar a legibilidade do JSX
-  const passwordField = (
-    <FormField
-      control={form.control}
-      name="password"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Nova Senha</FormLabel>
-          <FormControl>
-            <Input 
-              type="password" 
-              placeholder="Digite sua nova senha" 
-              {...field} 
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-  
-  const confirmPasswordField = (
-    <FormField
-      control={form.control}
-      name="confirmPassword"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Confirme a Nova Senha</FormLabel>
-          <FormControl>
-            <Input 
-              type="password" 
-              placeholder="Confirme sua nova senha" 
-              {...field} 
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-  
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">Redefinir Senha</CardTitle>
-          <CardDescription className="text-center">
-            {userEmail ? `Para a conta ${userEmail}` : 'Digite sua nova senha para continuar'}
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Erro</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {success && (
-            <Alert className="mb-6 bg-green-50 border-green-200">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <AlertTitle className="text-green-700">Senha redefinida com sucesso!</AlertTitle>
-              <AlertDescription className="text-green-600">
-                Você será redirecionado para a página de login em alguns segundos.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {invalidLink && (
-            <Alert variant="destructive" className="mb-6">
-              <XCircle className="h-4 w-4" />
-              <AlertTitle>Link Inválido</AlertTitle>
-              <AlertDescription>
-                O link de recuperação de senha é inválido ou expirou. 
-                <div className="mt-2 flex flex-col gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={requestNewPasswordResetLink}
-                    disabled={isRequestingNewLink}
-                    className="w-full flex gap-2 items-center justify-center"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    {isRequestingNewLink ? "Enviando..." : "Solicitar um novo link"}
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => navigate('/login')}
-                    className="w-full"
-                  >
-                    Voltar para a página de login
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Exibir informações adicionais sobre como resolver o problema */}
-          {invalidLink && import.meta.env.DEV && (
-            <Alert className="mb-6 bg-blue-50 border-blue-200">
-              <AlertTitle className="text-blue-700">Informações adicionais</AlertTitle>
-              <AlertDescription className="text-blue-600 text-sm">
-                <p>Possíveis causas:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>O link foi usado mais de uma vez (links de redefinição são válidos apenas para um uso)</li>
-                  <li>O link expirou (links são válidos por 1 hora)</li>
-                  <li>O link foi modificado ou truncado no email</li>
-                </ul>
-                <p className="mt-2">Recomendações:</p>
-                <ul className="list-disc pl-5 mt-1">
-                  <li>Solicite um novo link usando o botão acima</li>
-                  <li>Verifique se o email foi recebido (incluindo a pasta de spam)</li>
-                  <li>Copie e cole o link completo na barra de endereços</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {!success && !invalidLink && (
+    <AuthLayout
+      title="Redefinir sua senha"
+      subtitle="Digite sua nova senha para recuperar o acesso à sua conta"
+      linkText="Voltar para o login"
+      linkTo="/login"
+    >
+      <Card className="border border-emerald-100">
+        <CardContent className="pt-6">
+          {success ? (
+            <div className="space-y-4">
+              <Alert className="bg-emerald-50 border-emerald-200">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <AlertTitle className="text-emerald-700 font-medium">Senha redefinida com sucesso!</AlertTitle>
+                <AlertDescription className="text-emerald-600">
+                  Sua senha foi atualizada. Você será redirecionado para a página de login em instantes.
+                </AlertDescription>
+              </Alert>
+              
+              <Button 
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white mt-4"
+                onClick={() => navigate('/login')}
+              >
+                Ir para o login
+              </Button>
+            </div>
+          ) : invalidLink ? (
+            <div className="space-y-4">
+              <Alert className="bg-red-50 border-red-200">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <AlertTitle className="text-red-700 font-medium">Link inválido ou expirado</AlertTitle>
+                <AlertDescription className="text-red-600">
+                  {error || 'O link de recuperação é inválido ou expirou. Solicite um novo link.'}
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex flex-col space-y-4 mt-4">
+                <Button 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={requestNewPasswordResetLink}
+                  disabled={isRequestingNewLink || !userEmail}
+                >
+                  {isRequestingNewLink ? (
+                    <span className="flex items-center">
+                      <RefreshCw className="animate-spin mr-2 h-4 w-4" />
+                      Enviando...
+                    </span>
+                  ) : (
+                    'Solicitar novo link'
+                  )}
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => navigate('/login')}
+                >
+                  Voltar para o login
+                </Button>
+              </div>
+            </div>
+          ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {passwordField}
+                {error && (
+                  <Alert className="bg-red-50 border-red-200 mb-4">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <AlertTitle className="text-red-700 font-medium">Erro</AlertTitle>
+                    <AlertDescription className="text-red-600">{error}</AlertDescription>
+                  </Alert>
+                )}
                 
-                {confirmPasswordField}
+                {userEmail && (
+                  <Alert className="bg-blue-50 border-blue-200 mb-4">
+                    <AlertTitle className="text-blue-700 font-medium">
+                      Redefinindo senha para: {userEmail}
+                    </AlertTitle>
+                  </Alert>
+                )}
                 
-                <div className="text-xs text-muted-foreground mt-2">
-                  <p>A senha deve conter pelo menos:</p>
-                  <ul className="list-disc list-inside mt-1">
-                    <li>8 caracteres</li>
-                    <li>Uma letra maiúscula</li>
-                    <li>Uma letra minúscula</li>
-                    <li>Um número</li>
-                    <li>Um caractere especial (@$!%*?&)</li>
-                  </ul>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-emerald-700 font-medium">Nova senha</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-2.5 h-5 w-5 text-emerald-600" />
+                          <Input 
+                            placeholder="Digite sua nova senha" 
+                            type="password" 
+                            className="pl-10 border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <p className="text-xs text-slate-500">
+                        Sua senha deve ter pelo menos 8 caracteres, incluir uma letra maiúscula, 
+                        uma minúscula, um número e um caractere especial.
+                      </p>
+                      <FormMessage className="text-red-500 text-sm" />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-emerald-700 font-medium">Confirmar senha</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-2.5 h-5 w-5 text-emerald-600" />
+                          <Input 
+                            placeholder="Confirme sua senha" 
+                            type="password" 
+                            className="pl-10 border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-red-500 text-sm" />
+                    </FormItem>
+                  )}
+                />
                 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                   disabled={isLoading || !isSessionSet}
                 >
-                  {isLoading ? 'Processando...' : 'Redefinir Senha'}
+                  {isLoading ? (
+                    <span className="flex items-center">
+                      <RefreshCw className="animate-spin mr-2 h-4 w-4" />
+                      Redefinindo senha...
+                    </span>
+                  ) : (
+                    'Redefinir senha'
+                  )}
                 </Button>
               </form>
             </Form>
           )}
-          
-          {!invalidLink && !success && (
-            <div className="mt-4 text-center">
-              <Button 
-                variant="link" 
-                onClick={() => navigate('/login')}
-                className="text-sm"
-              >
-                Voltar para o Login
-              </Button>
-            </div>
-          )}
-          
-          {/* Informações de depuração (visíveis apenas em desenvolvimento) */}
-          {import.meta.env.DEV && debugInfo && (
-            <div className="mt-6 text-xs p-3 bg-gray-100 rounded overflow-auto max-h-40">
-              <h4 className="font-bold mb-1">Informações de depuração:</h4>
-              <pre>{debugInfo}</pre>
-            </div>
-          )}
         </CardContent>
       </Card>
-    </div>
+    </AuthLayout>
   );
 }
